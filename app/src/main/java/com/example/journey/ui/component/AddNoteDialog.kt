@@ -1,9 +1,11 @@
 package com.example.journey.ui.component
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -13,9 +15,12 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -33,12 +38,38 @@ fun AddNoteDialog(
     onDismiss: () -> Unit,
     onSaveNote: (String) -> Unit
 ) {
-    var content by remember {
-        mutableStateOf("")
+    // 使用TextFieldValue来管理文本内容、光标位置和选择范围
+    var textFieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
     }
     
     val focusRequester = remember {
         FocusRequester()
+    }
+    
+    // 实现插入标签功能的逻辑
+    fun insertTag() {
+        val currentValue = textFieldValue
+        val selection = currentValue.selection
+        
+        if (selection.start == selection.end) {
+            // 没有选中文本，在光标处插入#，光标移至#后方
+            val newText = currentValue.text.substring(0, selection.start) + "#" + currentValue.text.substring(selection.end)
+            val newCursorPosition = selection.start + 1
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(newCursorPosition)
+            )
+        } else {
+            // 选中文本，在选中文本前加#
+            val newText = currentValue.text.substring(0, selection.start) + "#" + currentValue.text.substring(selection.start)
+            // 保持选择范围不变，但起始位置+1
+            val newSelection = TextRange(selection.start + 1, selection.end + 1)
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = newSelection
+            )
+        }
     }
 
     // Create a state for the bottom sheet
@@ -67,13 +98,13 @@ fun AddNoteDialog(
             val scrollState = rememberScrollState()
             
             // 监听内容变化，自动滚动到底部
-            LaunchedEffect(content) {
+            LaunchedEffect(textFieldValue.text) {
                 scrollState.scrollTo(scrollState.maxValue)
             }
             
             BasicTextField(
-                value = content,
-                onValueChange = { content = it },
+                value = textFieldValue,
+                onValueChange = { textFieldValue = it },
                 // 1. 添加 cursorBrush 参数来设置光标颜色
                 cursorBrush = SolidColor(Color(0xFF64B5F6)),
                 modifier = Modifier
@@ -87,9 +118,9 @@ fun AddNoteDialog(
                     color = Color.Black,
                     lineHeight = 24.sp
                 ),
-                decorationBox = {
+                decorationBox = { innerTextField ->
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        if (content.isEmpty()) {
+                        if (textFieldValue.text.isEmpty()) {
                             Text(
                                 text = "现在的想法是...",
                                 style = TextStyle(
@@ -98,7 +129,7 @@ fun AddNoteDialog(
                                 )
                             )
                         }
-                        it()
+                        innerTextField()
                     }
                 },
                 maxLines = Int.MAX_VALUE
@@ -124,7 +155,7 @@ fun AddNoteDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Tag Button
-                        IconButton(onClick = { content += " #" }) {
+                        IconButton(onClick = { insertTag() }) {
                             Icon(
                                 imageVector = Icons.Rounded.Tag,
                                 contentDescription = "插入标签",
@@ -175,9 +206,9 @@ fun AddNoteDialog(
                     // Right Send Button
                     IconButton(
                         onClick = {
-                            if (content.isNotBlank()) {
-                                onSaveNote(content)
-                                content = ""
+                            if (textFieldValue.text.isNotBlank()) {
+                                onSaveNote(textFieldValue.text)
+                                textFieldValue = TextFieldValue("")
                                 onDismiss()
                             }
                         },
