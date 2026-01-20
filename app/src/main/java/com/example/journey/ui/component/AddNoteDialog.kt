@@ -23,6 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddNoteDialog(
@@ -36,7 +38,7 @@ fun AddNoteDialog(
     val focusRequester = remember {
         FocusRequester()
     }
-    
+
     // Create a state for the bottom sheet
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -66,7 +68,7 @@ fun AddNoteDialog(
                 cursorBrush = SolidColor(Color(0xFF64B5F6)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 120.dp) // 5行文字高度（24.sp行高 * 5）
+                    .heightIn(min = (5*24).dp,max = (18*24).dp) // 5行文字高度（24.sp行高 * 5）
                     .padding(horizontal = 16.dp)
                     .focusRequester(focusRequester),
                 textStyle = TextStyle(
