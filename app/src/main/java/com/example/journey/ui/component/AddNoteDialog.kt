@@ -2,9 +2,11 @@ package com.example.journey.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.filled.Image
@@ -61,6 +63,13 @@ fun AddNoteDialog(
         ) {
 
             // Immersive Input Area 输入区
+            val scrollState = rememberScrollState()
+            
+            // 监听内容变化，自动滚动到底部
+            LaunchedEffect(content) {
+                scrollState.scrollTo(scrollState.maxValue)
+            }
+            
             BasicTextField(
                 value = content,
                 onValueChange = { content = it },
@@ -68,9 +77,10 @@ fun AddNoteDialog(
                 cursorBrush = SolidColor(Color(0xFF64B5F6)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = (5*24).dp,max = (18*24).dp) // 5行文字高度（24.sp行高 * 5）
+                    .heightIn(min = (5*24).dp, max = (18*24).dp) // 5行文字高度（24.sp行高 * 5）
                     .padding(horizontal = 16.dp)
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    .verticalScroll(scrollState), // 添加垂直滚动
                 textStyle = TextStyle(
                     fontSize = 16.sp,
                     color = Color.Black,
