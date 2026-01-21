@@ -76,7 +76,8 @@ fun MainScreen(viewModel: NoteViewModel) {
                 showAddNoteDialog = false
             },
             onSaveNote = {
-                viewModel.addNote(it)
+                content, tags ->
+                viewModel.addNote(content, tags)
                 showAddNoteDialog = false
             }
         )
