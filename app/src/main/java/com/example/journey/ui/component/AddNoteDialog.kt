@@ -147,8 +147,7 @@ fun AddNoteDialog(
 
     // Create a state for the bottom sheet
     val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { false } // 禁用下滑关闭功能
+        skipPartiallyExpanded = true
     )
     
     ModalBottomSheet(
