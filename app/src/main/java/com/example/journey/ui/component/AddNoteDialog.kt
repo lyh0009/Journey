@@ -79,18 +79,14 @@ fun AddNoteDialog(
         val selection = currentValue.selection
         val text = currentValue.text
         
-        // 如果当前光标前不是空格，先补个空格
-        val beforeCursor = if (selection.start > 0) text[selection.start - 1] else ' '
-        val spaceNeeded = beforeCursor != ' '
-        
+        // 直接在光标位置插入#
         val newText = buildString {
             append(text.substring(0, selection.start))
-            if (spaceNeeded) append(" ")
             append("#")
             append(text.substring(selection.end))
         }
         
-        val newCursorPosition = selection.start + (if (spaceNeeded) 2 else 1)
+        val newCursorPosition = selection.start + 1
         textFieldValue = TextFieldValue(
             text = newText,
             selection = TextRange(newCursorPosition)
@@ -211,10 +207,10 @@ fun AddNoteDialog(
                                         if (lastHashIndex != -1) {
                                             val newText = buildString {
                                                 append(text.substring(0, lastHashIndex))
-                                                append("#$it")
+                                                append("#$it ")
                                                 append(text.substring(cursorPosition))
                                             }
-                                            val newCursorPosition = lastHashIndex + it.length + 1
+                                            val newCursorPosition = lastHashIndex + it.length + 2
                                             textFieldValue = TextFieldValue(
                                                 text = newText,
                                                 selection = TextRange(newCursorPosition)
