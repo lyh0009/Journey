@@ -38,48 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 
 
 
-// 移除VisualTransformation，因为当前Compose版本的BasicTextField可能不支持它
-// 我们将在后续使用其他方式实现标签高亮
-/*
-class TagVisualTransformation : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val originalText = text.text
-        val builder = AnnotatedString.Builder()
-        val tagColor = Color(0xFF64B5F6)
-        val tagStyle = SpanStyle(color = tagColor, fontWeight = FontWeight.Medium)
-        
-        // 逐字符处理，识别标签
-        var i = 0
-        
-        while (i < originalText.length) {
-            val currentChar = originalText[i]
-            
-            if (currentChar == '#') {
-                // 开始一个标签
-                val tagStart = i
-                builder.append(currentChar)
-                i++
-                
-                // 继续添加标签字符，直到遇到空格或结束
-                while (i < originalText.length && !originalText[i].isWhitespace()) {
-                    builder.append(originalText[i])
-                    i++
-                }
-                
-                // 添加标签样式
-                val tagEnd = i
-                builder.addStyle(tagStyle, tagStart, tagEnd)
-            } else {
-                // 普通文本
-                builder.append(currentChar)
-                i++
-            }
-        }
-        
-        return TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
-    }
-}
-*/
+// 移除不兼容的OutputTransformation代码，使用更简单的方式实现标签高亮
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,6 +69,9 @@ fun AddNoteDialog(
     val focusRequester = remember {
         FocusRequester()
     }
+    
+    val tagColor = Color(0xFF64B5F6)
+    val tagStyle = SpanStyle(color = tagColor, fontWeight = FontWeight.Medium)
     
     // 实现插入标签功能的逻辑
     fun insertTag() {
@@ -284,7 +246,7 @@ fun AddNoteDialog(
                     .verticalScroll(scrollState), // 添加垂直滚动
                 textStyle = TextStyle(
                     fontSize = 16.sp,
-                    color = Color.Black,
+                    color = Color.Transparent, // 文本透明，我们将在decorationBox中显示带样式的文本
                     lineHeight = 24.sp
                 ),
                 decorationBox = { innerTextField ->
@@ -297,7 +259,52 @@ fun AddNoteDialog(
                                     color = Color.Gray
                                 )
                             )
+                        } else {
+                            // 使用AnnotatedString显示带有样式的文本
+                            val builder = AnnotatedString.Builder(textFieldValue.text)
+                            val tagColor = Color(0xFF64B5F6)
+                            val tagStyle = SpanStyle(color = tagColor, fontWeight = FontWeight.Medium)
+                            
+                            // 逐字符处理，识别标签
+                            var i = 0
+                            
+                            while (i < textFieldValue.text.length) {
+                                val currentChar = textFieldValue.text[i]
+                                
+                                if (currentChar == '#') {
+                                    // 开始一个标签
+                                    val tagStart = i
+                                    i++
+                                    
+                                    // 继续添加标签字符，直到遇到空格或结束
+                                    while (i < textFieldValue.text.length && !textFieldValue.text[i].isWhitespace()) {
+                                        i++
+                                    }
+                                    
+                                    // 添加标签样式
+                                    val tagEnd = i
+                                    if (tagEnd > tagStart) {
+                                        builder.addStyle(tagStyle, tagStart, tagEnd)
+                                    }
+                                } else {
+                                    // 普通文本
+                                    i++
+                                }
+                            }
+                            
+                            // 显示带有样式的文本
+                            Text(
+                                text = builder.toAnnotatedString(),
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    color = Color.Black,
+                                    lineHeight = 24.sp
+                                ),
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
+                        
+                        // 实际的输入区域，透明背景，显示光标
                         innerTextField()
                     }
                 },
