@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter
 data class Note(
     val id: String = java.util.UUID.randomUUID().toString(),
     val content: String,
+    val tags: List<String> = emptyList(),
     val createdAt: LocalDateTime = LocalDateTime.now()
 ) {
     val formattedDate: String
