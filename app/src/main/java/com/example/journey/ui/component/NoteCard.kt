@@ -1,10 +1,11 @@
 package com.example.journey.ui.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -13,7 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,6 +27,34 @@ import com.example.journey.data.Note
 fun NoteCard(note: Note) {
     var isExpanded by remember { mutableStateOf(false) }
     var isOverFlowed by remember { mutableStateOf(false) }
+
+    // 处理文本，将标签转换为带样式的AnnotatedString
+    val processedText = remember(note.content) {
+        val builder = AnnotatedString.Builder(note.content)
+        val tagRegex = Regex("#([\\w\\u4e00-\\u9fa5]+)")
+        val matches = tagRegex.findAll(note.content)
+        
+        // 保存所有匹配结果，从后往前处理，避免索引偏移
+        val matchList = matches.toList().reversed()
+        
+        matchList.forEach { matchResult ->
+            val start = matchResult.range.start
+            val end = matchResult.range.endInclusive + 1
+            
+            // 添加标签样式：高亮文字
+            builder.addStyle(
+                style = SpanStyle(
+                    color = Color(0xFF64B5F6),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                start = start,
+                end = end
+            )
+        }
+        
+        builder.toAnnotatedString()
+    }
 
     Card(
         modifier = Modifier
@@ -47,9 +76,9 @@ fun NoteCard(note: Note) {
                 style = TextStyle(fontSize = 14.sp, color = Color.Gray)
             )
 
-            // 正文内容：直接在这里检测行数
+            // 正文内容：使用AnnotatedString显示带样式的文本
             Text(
-                text = note.content,
+                text = processedText,
                 style = TextStyle(fontSize = 16.sp),
                 maxLines = if (isExpanded) Int.MAX_VALUE else 6,
                 overflow = TextOverflow.Clip, // 截断
@@ -72,7 +101,7 @@ fun NoteCard(note: Note) {
                     text = if (isExpanded) "收起" else "展开",
                     style = TextStyle(
                         fontSize = 14.sp,
-                        color = Color(0xFF5882FA),
+                        color = Color(0xFF03A9F4),
                         fontWeight = FontWeight.Bold
                     ),
                     modifier = Modifier
@@ -88,6 +117,27 @@ fun NoteCard(note: Note) {
     }
 }
 
+@Composable
+fun TagChip(tag: String) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = Color(0xFFE3F2FD),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = "#$tag",
+            style = TextStyle(
+                fontSize = 14.sp,
+                color = Color(0xFF64B5F6),
+                fontWeight = FontWeight.Medium
+            )
+        )
+    }
+}
+
 @Preview(
     showBackground = true,
     device = "spec:width=411dp,height=891dp"
@@ -95,7 +145,7 @@ fun NoteCard(note: Note) {
 @Composable
 fun NoteCardPreview() {
     val sampleNote = Note(
-        content = "这是一条示例笔记，用于预览NoteCard组件的效果。这条笔记包含了一些文本内容，以便测试文本截断和展开功能。",
+        content = "#这是一条示例标签 这是一条示例笔记，用于预览NoteCard组件的效果。这条笔记包含了一些文本内容，以便测试文本截断和展开功能。",
         createdAt = java.time.LocalDateTime.now()
     )
     NoteCard(note = sampleNote)
