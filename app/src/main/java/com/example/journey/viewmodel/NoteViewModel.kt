@@ -25,9 +25,9 @@ class NoteViewModel : ViewModel() {
         )
     }
     
-    fun addNote(content: String) {
+    fun addNote(content: String, tags: List<String> = emptyList()) {
         if (content.isNotBlank()) {
-            _notes.add(0, Note(content = content))
+            _notes.add(0, Note(content = content, tags = tags))
         }
     }
     
