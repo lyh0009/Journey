@@ -393,9 +393,11 @@ fun AddNoteDialog(
                         onClick = {
                             val content = textFieldValue.text
                             if (content.isNotBlank()) {
-                                // 提取标签并保存
+                                // 提取标签
                                 val tags = extractTags(content)
-                                onSaveNote(content, tags)
+                                // 从正文内容中移除#标签
+                                val contentWithoutTags = content.replace(Regex("#([\\w\\u4e00-\\u9fa5]+)"), "").trim()
+                                onSaveNote(contentWithoutTags, tags)
                                 textFieldValue = TextFieldValue("")
                                 onDismiss()
                             }

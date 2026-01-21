@@ -28,34 +28,6 @@ fun NoteCard(note: Note) {
     var isExpanded by remember { mutableStateOf(false) }
     var isOverFlowed by remember { mutableStateOf(false) }
 
-    // 处理文本，将标签转换为带样式的AnnotatedString
-    val processedText = remember(note.content) {
-        val builder = AnnotatedString.Builder(note.content)
-        val tagRegex = Regex("#([\\w\\u4e00-\\u9fa5]+)")
-        val matches = tagRegex.findAll(note.content)
-        
-        // 保存所有匹配结果，从后往前处理，避免索引偏移
-        val matchList = matches.toList().reversed()
-        
-        matchList.forEach { matchResult ->
-            val start = matchResult.range.start
-            val end = matchResult.range.endInclusive + 1
-            
-            // 添加标签样式：高亮文字
-            builder.addStyle(
-                style = SpanStyle(
-                    color = Color(0xFF64B5F6),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                ),
-                start = start,
-                end = end
-            )
-        }
-        
-        builder.toAnnotatedString()
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -75,10 +47,23 @@ fun NoteCard(note: Note) {
                 text = note.formattedDate,
                 style = TextStyle(fontSize = 14.sp, color = Color.Gray)
             )
+            
+            // 标签显示区域
+            if (note.tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(note.tags) { tag ->
+                        TagChip(tag = tag)
+                    }
+                }
+            }
 
-            // 正文内容：使用AnnotatedString显示带样式的文本
+            // 正文内容
             Text(
-                text = processedText,
+                text = note.content,
                 style = TextStyle(fontSize = 16.sp),
                 maxLines = if (isExpanded) Int.MAX_VALUE else 6,
                 overflow = TextOverflow.Clip, // 截断
@@ -122,7 +107,7 @@ fun TagChip(tag: String) {
     Box(
         modifier = Modifier
             .background(
-                color = Color(0xFFE3F2FD),
+                color = Color(0xFFF0F0F0), // 灰色背景
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -130,8 +115,8 @@ fun TagChip(tag: String) {
         Text(
             text = "#$tag",
             style = TextStyle(
-                fontSize = 14.sp,
-                color = Color(0xFF64B5F6),
+                fontSize = 12.sp,
+                color = Color(0xFF4051B2), // 蓝色文字
                 fontWeight = FontWeight.Medium
             )
         )
@@ -145,7 +130,8 @@ fun TagChip(tag: String) {
 @Composable
 fun NoteCardPreview() {
     val sampleNote = Note(
-        content = "#这是一条示例标签 这是一条示例笔记，用于预览NoteCard组件的效果。这条笔记包含了一些文本内容，以便测试文本截断和展开功能。",
+        content = "这是一条示例笔记，用于预览NoteCard组件的效果。这条笔记包含了一些文本内容，以便测试文本截断和展开功能。",
+        tags = listOf("开心", "工作", "重要"),
         createdAt = java.time.LocalDateTime.now()
     )
     NoteCard(note = sampleNote)
