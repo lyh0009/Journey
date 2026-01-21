@@ -4,7 +4,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -21,16 +24,62 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.*
+import androidx.compose.ui.text.font.FontWeight
 
 
+
+// 移除VisualTransformation，因为当前Compose版本的BasicTextField可能不支持它
+// 我们将在后续使用其他方式实现标签高亮
+/*
+class TagVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val originalText = text.text
+        val builder = AnnotatedString.Builder()
+        val tagColor = Color(0xFF64B5F6)
+        val tagStyle = SpanStyle(color = tagColor, fontWeight = FontWeight.Medium)
+        
+        // 逐字符处理，识别标签
+        var i = 0
+        
+        while (i < originalText.length) {
+            val currentChar = originalText[i]
+            
+            if (currentChar == '#') {
+                // 开始一个标签
+                val tagStart = i
+                builder.append(currentChar)
+                i++
+                
+                // 继续添加标签字符，直到遇到空格或结束
+                while (i < originalText.length && !originalText[i].isWhitespace()) {
+                    builder.append(originalText[i])
+                    i++
+                }
+                
+                // 添加标签样式
+                val tagEnd = i
+                builder.addStyle(tagStyle, tagStart, tagEnd)
+            } else {
+                // 普通文本
+                builder.append(currentChar)
+                i++
+            }
+        }
+        
+        return TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
+    }
+}
+*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +92,21 @@ fun AddNoteDialog(
         mutableStateOf(TextFieldValue(""))
     }
     
+    // 标签补全列表
+    val tags = remember {
+        mutableStateListOf("开心", "工作", "生活", "学习", "重要", "灵感")
+    }
+    
+    // 显示标签补全列表的状态
+    var showTagSuggestions by remember {
+        mutableStateOf(false)
+    }
+    
+    // 当前输入的标签前缀
+    var currentTagPrefix by remember {
+        mutableStateOf("")
+    }
+    
     val focusRequester = remember {
         FocusRequester()
     }
@@ -51,24 +115,75 @@ fun AddNoteDialog(
     fun insertTag() {
         val currentValue = textFieldValue
         val selection = currentValue.selection
+        val text = currentValue.text
         
-        if (selection.start == selection.end) {
-            // 没有选中文本，在光标处插入#，光标移至#后方
-            val newText = currentValue.text.substring(0, selection.start) + "#" + currentValue.text.substring(selection.end)
-            val newCursorPosition = selection.start + 1
-            textFieldValue = TextFieldValue(
-                text = newText,
-                selection = TextRange(newCursorPosition)
-            )
+        // 如果当前光标前不是空格，先补个空格
+        val beforeCursor = if (selection.start > 0) text[selection.start - 1] else ' '
+        val spaceNeeded = beforeCursor != ' '
+        
+        val newText = buildString {
+            append(text.substring(0, selection.start))
+            if (spaceNeeded) append(" ")
+            append("#")
+            append(text.substring(selection.end))
+        }
+        
+        val newCursorPosition = selection.start + (if (spaceNeeded) 2 else 1)
+        textFieldValue = TextFieldValue(
+            text = newText,
+            selection = TextRange(newCursorPosition)
+        )
+        
+        // 显示标签补全列表
+        showTagSuggestions = true
+        currentTagPrefix = ""
+    }
+    
+    // 检测是否正在输入标签
+    fun checkIsTypingTag() {
+        val text = textFieldValue.text
+        val cursorPosition = textFieldValue.selection.start
+        
+        if (cursorPosition > 0) {
+            val charBefore = text[cursorPosition - 1]
+            if (charBefore == '#') {
+                // 刚刚输入了#
+                showTagSuggestions = true
+                currentTagPrefix = ""
+            } else {
+                // 检查是否在#之后
+                val textBeforeCursor = text.substring(0, cursorPosition)
+                val lastHashIndex = textBeforeCursor.lastIndexOf('#')
+                if (lastHashIndex != -1) {
+                    // 检查#之后是否有空格
+                    val textAfterHash = textBeforeCursor.substring(lastHashIndex + 1)
+                    if (textAfterHash.none { it.isWhitespace() }) {
+                        // 正在输入标签
+                        showTagSuggestions = true
+                        currentTagPrefix = textAfterHash
+                    } else {
+                        // 不在输入标签
+                        showTagSuggestions = false
+                        currentTagPrefix = ""
+                    }
+                } else {
+                    // 没有#
+                    showTagSuggestions = false
+                    currentTagPrefix = ""
+                }
+            }
         } else {
-            // 选中文本，在选中文本前加#
-            val newText = currentValue.text.substring(0, selection.start) + "#" + currentValue.text.substring(selection.start)
-            // 保持选择范围不变，但起始位置+1
-            val newSelection = TextRange(selection.start + 1, selection.end + 1)
-            textFieldValue = TextFieldValue(
-                text = newText,
-                selection = newSelection
-            )
+            showTagSuggestions = false
+            currentTagPrefix = ""
+        }
+    }
+    
+    // 过滤标签补全列表
+    val filteredTags = remember(currentTagPrefix) {
+        if (currentTagPrefix.isEmpty()) {
+            tags
+        } else {
+            tags.filter { it.startsWith(currentTagPrefix, ignoreCase = true) }
         }
     }
 
@@ -102,9 +217,63 @@ fun AddNoteDialog(
                 scrollState.scrollTo(scrollState.maxValue)
             }
             
+            // 标签补全列表
+            if (showTagSuggestions && filteredTags.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    shadowElevation = 2.dp,
+                    color = Color.White
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                        items(filteredTags) {
+                            Text(
+                                text = "#$it",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    color = Color.DarkGray
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .clickable {
+                                        // 插入选中的标签
+                                        val currentValue = textFieldValue
+                                        val text = currentValue.text
+                                        val cursorPosition = currentValue.selection.start
+                                        val textBeforeCursor = text.substring(0, cursorPosition)
+                                        val lastHashIndex = textBeforeCursor.lastIndexOf('#')
+                                        
+                                        if (lastHashIndex != -1) {
+                                            val newText = buildString {
+                                                append(text.substring(0, lastHashIndex))
+                                                append("#$it")
+                                                append(text.substring(cursorPosition))
+                                            }
+                                            val newCursorPosition = lastHashIndex + it.length + 1
+                                            textFieldValue = TextFieldValue(
+                                                text = newText,
+                                                selection = TextRange(newCursorPosition)
+                                            )
+                                        }
+                                        
+                                        showTagSuggestions = false
+                                        currentTagPrefix = ""
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+            
             BasicTextField(
                 value = textFieldValue,
-                onValueChange = { textFieldValue = it },
+                onValueChange = { 
+                    textFieldValue = it 
+                    checkIsTypingTag()
+                },
                 // 1. 添加 cursorBrush 参数来设置光标颜色
                 cursorBrush = SolidColor(Color(0xFF64B5F6)),
                 modifier = Modifier
