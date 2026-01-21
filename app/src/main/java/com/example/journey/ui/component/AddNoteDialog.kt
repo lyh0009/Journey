@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 @Composable
 fun AddNoteDialog(
     onDismiss: () -> Unit,
-    onSaveNote: (String) -> Unit
+    onSaveNote: (String, List<String>) -> Unit
 ) {
     // 使用TextFieldValue来管理文本内容、光标位置和选择范围
     var textFieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -146,8 +146,12 @@ fun AddNoteDialog(
     }
 
     // Create a state for the bottom sheet
+    // 去除回弹效果，使用正确的参数组合
     val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
+        // 启用部分展开状态跳过，减少状态变化
+        skipPartiallyExpanded = true,
+        // 完全禁用下滑关闭和回弹效果
+        confirmValueChange = { false }
     )
     
     ModalBottomSheet(
@@ -374,11 +378,24 @@ fun AddNoteDialog(
                         }
                     }
                     
+                    // 从文本中提取标签的函数
+                    fun extractTags(text: String): List<String> {
+                        // 修改正则表达式，使其能够匹配中文标签
+                        val tagRegex = Regex("#([\\w\\u4e00-\\u9fa5]+)")
+                        return tagRegex.findAll(text)
+                            .map { it.groupValues[1] }
+                            .distinct()
+                            .toList()
+                    }
+                    
                     // Right Send Button
                     IconButton(
                         onClick = {
-                            if (textFieldValue.text.isNotBlank()) {
-                                onSaveNote(textFieldValue.text)
+                            val content = textFieldValue.text
+                            if (content.isNotBlank()) {
+                                // 提取标签并保存
+                                val tags = extractTags(content)
+                                onSaveNote(content, tags)
                                 textFieldValue = TextFieldValue("")
                                 onDismiss()
                             }
@@ -421,6 +438,6 @@ fun AddNoteDialog(
 fun AddNoteDialogPreview() {
     AddNoteDialog(
         onDismiss = {},
-        onSaveNote = {}
+        onSaveNote = { _, _ -> }
     )
 }
