@@ -146,8 +146,7 @@ fun NoteCardPreview() {
 > 这是一段引用
 
 [链接](https://example.com)""".trimIndent(),
-        tags = listOf("开心", "工作", "重要"),
-        createdAt = java.time.LocalDateTime.now()
+        tags = listOf("开心", "工作", "重要")
     )
     NoteCard(note = sampleNote)
 }
@@ -168,8 +167,7 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
 Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
 
 Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.""".trimIndent(),
-        tags = listOf("测试"),
-        createdAt = java.time.LocalDateTime.now()
+        tags = listOf("测试")
     )
     NoteCard(note = sampleNote)
 }

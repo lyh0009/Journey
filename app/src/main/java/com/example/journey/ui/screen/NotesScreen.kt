@@ -33,7 +33,12 @@ fun NotesScreen(
     onAddNoteClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    val filteredNotes = viewModel.getFilteredNotes()
+    val notes by viewModel.notes.collectAsState()
+    val filteredNotes = if (viewModel.searchQuery.isBlank()) {
+        notes
+    } else {
+        notes.filter { it.content.contains(viewModel.searchQuery, ignoreCase = true) }
+    }
     var isSearchVisible by remember { mutableStateOf(false) }
     val customColors = LocalCustomColors.current
     
@@ -159,7 +164,7 @@ fun NotesScreen(
                 if (isSearchVisible) {
                     TextField(
                         value = viewModel.searchQuery,
-                        onValueChange = { query -> viewModel.searchQuery = query },
+                        onValueChange = { query -> viewModel.updateSearchQuery(query) },
                         placeholder = {
                             Text(
                                 text = "搜索笔记...",
@@ -208,15 +213,9 @@ fun NotesScreen(
     device = "spec:width=411dp,height=891dp"
 )
 @Composable
-@Suppress("ViewModelConstructorInComposable")
 fun NotesScreenPreview() {
-    // For preview, we can directly create a ViewModel instance
-    // This is acceptable for preview purposes only
-    val viewModel = NoteViewModel()
-    
-    NotesScreen(
-        viewModel = viewModel,
-        onAddNoteClick = {},
-        onSettingsClick = {}
-    )
+    // Preview without ViewModel since it requires a database
+    MaterialTheme {
+        Text("Preview not available - requires database")
+    }
 }
