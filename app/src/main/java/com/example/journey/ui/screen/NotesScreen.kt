@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import com.example.journey.data.Note
 import com.example.journey.ui.component.NoteCard
 import com.example.journey.ui.theme.LocalCustomColors
@@ -54,13 +55,20 @@ fun NotesScreen(
     val drawerWidthDp = with(density) {
         (containerWidthPx * 0.8f).toDp()
     }
+
+    // 处理返回手势：如果搜索框可见，先关闭搜索框
+    BackHandler(enabled = isSearchVisible) {
+        isSearchVisible = false
+        viewModel.searchQuery = "" // 清空搜索内容
+    }
     // 抽屉导航栏
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.width(drawerWidthDp),
-                drawerShape = RectangleShape
+                drawerShape = RectangleShape,
+                drawerContainerColor = customColors.screenBackground
             ) {
                 // Drawer header
                 Text(
@@ -69,7 +77,7 @@ fun NotesScreen(
                     style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // Drawer items
                 NavigationDrawerItem(
                     label = { Text(text = "设置") },
@@ -88,7 +96,7 @@ fun NotesScreen(
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
-                
+
                 // Add more drawer items here if needed
             }
         }
@@ -168,23 +176,26 @@ fun NotesScreen(
                                 style = TextStyle(fontSize = 14.sp, color = Color.Gray)
                             )
                         },
-                        // 输入框样式
+                        // 输入框样式 - 圆角矩形
                         modifier = Modifier
                             .padding(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 8.dp,
-                            bottom = 8.dp
-                        )
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp,
+                                bottom = 8.dp
+                            )
                             .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(26.dp),
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.LightGray.copy(alpha = 0.2f),
                             unfocusedContainerColor = Color.LightGray.copy(alpha = 0.2f),
                             focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        )
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
+                        ),
+                        singleLine = true
                     )
                 }
                 
