@@ -13,39 +13,44 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.*
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.journey.data.Note
+import com.example.journey.ui.theme.LocalCustomColors
 
 
 @Composable
 fun NoteCard(note: Note) {
     var isExpanded by remember { mutableStateOf(false) }
     var isOverFlowed by remember { mutableStateOf(false) }
+    val customColors = LocalCustomColors.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null, // 去掉点击反馈
+                indication = null,
                 onClick = { isExpanded = !isExpanded }
             ),
-        // 卡片圆角
         shape = RoundedCornerShape(20.dp),
-        // 卡片阴影
+        colors = CardDefaults.cardColors(
+            containerColor = customColors.cardBackground
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // 时间戳
             Text(
                 text = note.formattedDate,
-                style = TextStyle(fontSize = 14.sp, color = Color.Gray)
+                style = TextStyle(
+                    fontSize = 14.sp, 
+                    color = customColors.markdownHint
+                )
             )
             
             // 标签显示区域
@@ -61,32 +66,28 @@ fun NoteCard(note: Note) {
                 }
             }
 
-            // 正文内容
-            Text(
-                text = note.content,
-                style = TextStyle(fontSize = 16.sp),
-                maxLines = if (isExpanded) Int.MAX_VALUE else 6,
-                overflow = TextOverflow.Clip, // 截断
-                onTextLayout = { textLayoutResult ->
-                    // 关键逻辑：
-                    // didOverflowHeight 表示内容是否因为 maxLines 限制而溢出了
-                    // 或者判断 lineCount 是否大于我们设定的阈值
-                    if (!isExpanded) { // 只在收起状态下检测，避免展开后逻辑冲突
-                        isOverFlowed = textLayoutResult.didOverflowHeight || textLayoutResult.lineCount > 6
-                    }
-                },
+            // 正文内容：使用 Markdown 渲染
+            MarkdownRenderer(
+                content = note.content,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 8.dp),
+                maxLines = if (isExpanded) Int.MAX_VALUE else 5,
+                onTextLayout = { textLayoutResult ->
+                    // 检测是否溢出：当实际行数超过5行或文本被截断时
+                    if (!isExpanded) {
+                        isOverFlowed = textLayoutResult.lineCount >= 5 || textLayoutResult.hasVisualOverflow
+                    }
+                }
             )
 
-            // 只有检测到溢出时才显示按钮
+            // 只有检测到溢出时才显示展开/收起按钮
             if (isOverFlowed) {
                 Text(
                     text = if (isExpanded) "收起" else "展开",
                     style = TextStyle(
                         fontSize = 14.sp,
-                        color = Color(0xFF03A9F4),
+                        color = customColors.markdownLink,
                         fontWeight = FontWeight.Bold
                     ),
                     modifier = Modifier
@@ -104,10 +105,12 @@ fun NoteCard(note: Note) {
 
 @Composable
 fun TagChip(tag: String) {
+    val customColors = LocalCustomColors.current
+    
     Box(
         modifier = Modifier
             .background(
-                color = Color(0xFFF0F0F0), // 灰色背景
+                color = customColors.markdownCodeBackground,
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -115,8 +118,8 @@ fun TagChip(tag: String) {
         Text(
             text = "#$tag",
             style = TextStyle(
-                fontSize = 12.sp,
-                color = Color(0xFF4051B2), // 蓝色文字
+                fontSize = 14.sp,
+                color = customColors.markdownLink,
                 fontWeight = FontWeight.Medium
             )
         )
@@ -130,8 +133,42 @@ fun TagChip(tag: String) {
 @Composable
 fun NoteCardPreview() {
     val sampleNote = Note(
-        content = "这是一条示例笔记，用于预览NoteCard组件的效果。这条笔记包含了一些文本内容，以便测试文本截断和展开功能。",
+        content = """这是一条示例笔记，用于预览NoteCard组件的效果。
+            
+## 支持 Markdown
+
+- **加粗文本**
+- *斜体文本*
+- ~~删除线~~
+- ==高亮文本==
+- `行内代码`
+
+> 这是一段引用
+
+[链接](https://example.com)""".trimIndent(),
         tags = listOf("开心", "工作", "重要"),
+        createdAt = java.time.LocalDateTime.now()
+    )
+    NoteCard(note = sampleNote)
+}
+
+@Preview(
+    showBackground = true,
+    device = "spec:width=411dp,height=891dp"
+)
+@Composable
+fun NoteCardPreviewWithLongText() {
+    val sampleNote = Note(
+        content = """这是一条很长的笔记，用于测试文本截断和展开功能。
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+
+Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.""".trimIndent(),
+        tags = listOf("测试"),
         createdAt = java.time.LocalDateTime.now()
     )
     NoteCard(note = sampleNote)

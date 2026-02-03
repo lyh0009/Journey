@@ -3,7 +3,7 @@ package com.example.journey.ui.screen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +29,7 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Rounded.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "返回"
                         )
                     }

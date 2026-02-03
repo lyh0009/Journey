@@ -1,12 +1,14 @@
 package com.example.journey.ui.screen
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.journey.ui.component.NoteCard
-import com.example.journey.ui.theme.JourneyTheme
+import com.example.journey.ui.theme.LocalCustomColors
 import com.example.journey.viewmodel.NoteViewModel
 import kotlinx.coroutines.launch
 
@@ -33,6 +35,7 @@ fun NotesScreen(
 ) {
     val filteredNotes = viewModel.getFilteredNotes()
     var isSearchVisible by remember { mutableStateOf(false) }
+    val customColors = LocalCustomColors.current
     
     // Drawer state management 抽屉状态管理
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -59,7 +62,7 @@ fun NotesScreen(
             ) {
                 // Drawer header
                 Text(
-                    text = "菜单",
+                    text = "Notes",
                     modifier = Modifier.padding(16.dp),
                     style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 )
@@ -68,6 +71,12 @@ fun NotesScreen(
                 // Drawer items
                 NavigationDrawerItem(
                     label = { Text(text = "设置") },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = "设置"
+                        )
+                    },
                     selected = false,
                     onClick = {
                         scope.launch {
@@ -82,14 +91,16 @@ fun NotesScreen(
             }
         }
     ) {
+        // 主界面
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = {Box(modifier = Modifier.offset(x = (-12).dp)) { // 使用负值减小间距，正值增大间距
+                    title = {Box(modifier = Modifier.offset(x = (-12).dp)) {
                         Text(
                             text = "Notes",
                             fontSize = 20.sp
-                        )}
+                        )
+                    }
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -110,7 +121,10 @@ fun NotesScreen(
                                 contentDescription = "搜索"
                             )
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = customColors.screenBackground
+                    )
                 )
             },
             floatingActionButtonPosition = FabPosition.Center,
@@ -138,6 +152,7 @@ fun NotesScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(customColors.screenBackground)
                     .padding(it)
             ) {
                 // Search Bar 搜索栏 - 仅在搜索按钮被点击时显示
@@ -154,10 +169,10 @@ fun NotesScreen(
                         // 输入框样式
                         modifier = Modifier
                             .padding(
-                            start = 16.dp,// 减小左边间距，让它离屏幕更近一些
-                            end = 16.dp,// 减小右边间距，让它离屏幕更近一些
-                            top = 8.dp,// 减小顶部间距，让它离屏幕更近一些
-                            bottom = 8.dp // 减小底部间距，让它离列表更近一些
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 8.dp
                         )
                             .fillMaxWidth()
                             .height(52.dp),
@@ -174,8 +189,8 @@ fun NotesScreen(
                 // Notes List 笔记列表
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    // 列表内间距
-                    contentPadding = PaddingValues(16.dp),
+                    // 减小顶部间距
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                     // 多条笔记间隔
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -204,49 +219,4 @@ fun NotesScreenPreview() {
         onAddNoteClick = {},
         onSettingsClick = {}
     )
-}
-@Preview(showBackground = true, name = "导航栏预览")
-@Composable
-fun NavDrawerPreview() {
-    // 关键点：将初始状态设置为 Open
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Open)
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(320.dp),
-                drawerShape = RectangleShape
-            ) {
-                Text("菜单", modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
-                NavigationDrawerItem(
-                    label = { Text("设置") },
-                    selected = false,
-                    onClick = { }
-                )
-            }
-        }
-    ) {
-        // 主屏幕内容
-        Scaffold { padding ->
-            Column(modifier = Modifier.padding(padding)) {
-                Text("这是主内容区")
-            }
-        }
-    }
-}
-
-@Composable
-@Suppress("ViewModelConstructorInComposable")
-fun NotesScreenWithNavBarPreview() {
-    // Preview with navigation bar visible
-    val viewModel = NoteViewModel()
-    
-    JourneyTheme {
-        NotesScreen(
-            viewModel = viewModel,
-            onAddNoteClick = {},
-            onSettingsClick = {}
-        )
-    }
 }
