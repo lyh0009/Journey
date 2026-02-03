@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,9 +24,14 @@ import com.example.journey.ui.theme.LocalCustomColors
 
 
 @Composable
-fun NoteCard(note: Note) {
+fun NoteCard(
+    note: Note,
+    onEditClick: (Note) -> Unit = {},
+    onDeleteClick: (Note) -> Unit = {}
+) {
     var isExpanded by remember { mutableStateOf(false) }
     var isOverFlowed by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val customColors = LocalCustomColors.current
 
     Card(
@@ -44,15 +49,75 @@ fun NoteCard(note: Note) {
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // 时间戳
-            Text(
-                text = note.formattedDate,
-                style = TextStyle(
-                    fontSize = 14.sp, 
-                    color = customColors.markdownHint
+            // 时间戳和更多选项按钮行
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 时间戳
+                Text(
+                    text = note.formattedDate,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        color = customColors.markdownHint
+                    )
                 )
-            )
-            
+
+                // 更多选项按钮
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.MoreVert,
+                            contentDescription = "更多选项",
+                            tint = customColors.markdownHint
+                        )
+                    }
+
+                    // 下拉菜单
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        shape = RoundedCornerShape(12.dp),
+                        containerColor = customColors.cardBackground
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "编辑",
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        color = customColors.markdownBody
+                                    )
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onEditClick(note)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "删除",
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        color = customColors.markdownBody
+                                    )
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick(note)
+                            }
+                        )
+                    }
+                }
+            }
+
             // 标签显示区域
             if (note.tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
@@ -106,7 +171,7 @@ fun NoteCard(note: Note) {
 @Composable
 fun TagChip(tag: String) {
     val customColors = LocalCustomColors.current
-    
+
     Box(
         modifier = Modifier
             .background(

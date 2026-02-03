@@ -202,36 +202,36 @@ class MarkdownParserImpl : MarkdownParser {
             } else if (isOrderedListLine(line)) {
                 break
             } else {
-                // 继续上一项的内容
+                // 继续上一项的内容（使用换行符保留换行）
                 if (items.isNotEmpty()) {
                     val lastItem = items.last()
                     items[items.size - 1] = lastItem.copy(
-                        content = lastItem.content + " " + line.trim()
+                        content = lastItem.content + "\n" + line.trim()
                     )
                 }
                 i++
             }
         }
-        
+
         return items to i
     }
-    
+
     private fun parseOrderedList(lines: List<String>, startIndex: Int): Pair<List<Pair<Int, ListItem>>, Int> {
         val items = mutableListOf<Pair<Int, ListItem>>()
         var i = startIndex
         val baseIndent = countIndent(lines[startIndex])
         var currentNumber = 1
-        
+
         while (i < lines.size) {
             val line = lines[i]
             if (line.isBlank()) {
                 i++
                 continue
             }
-            
+
             val currentIndent = countIndent(line)
             if (currentIndent < baseIndent) break
-            
+
             if (isOrderedListLine(line)) {
                 val content = extractOrderedListContent(line)
                 val indentLevel = (currentIndent - baseIndent) / 2
@@ -241,10 +241,11 @@ class MarkdownParserImpl : MarkdownParser {
             } else if (isUnorderedListLine(line)) {
                 break
             } else {
+                // 继续上一项的内容（使用换行符保留换行）
                 if (items.isNotEmpty()) {
                     val (num, lastItem) = items.last()
                     items[items.size - 1] = num to lastItem.copy(
-                        content = lastItem.content + " " + line.trim()
+                        content = lastItem.content + "\n" + line.trim()
                     )
                 }
                 i++

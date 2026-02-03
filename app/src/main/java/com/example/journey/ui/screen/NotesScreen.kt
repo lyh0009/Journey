@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.journey.data.Note
 import com.example.journey.ui.component.NoteCard
 import com.example.journey.ui.theme.LocalCustomColors
 import com.example.journey.viewmodel.NoteViewModel
@@ -31,7 +32,8 @@ import kotlinx.coroutines.launch
 fun NotesScreen(
     viewModel: NoteViewModel,
     onAddNoteClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onEditNoteClick: (Note) -> Unit = {}
 ) {
     val filteredNotes = viewModel.getFilteredNotes()
     var isSearchVisible by remember { mutableStateOf(false) }
@@ -194,8 +196,12 @@ fun NotesScreen(
                     // 多条笔记间隔
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(filteredNotes) {
-                        NoteCard(note = it)
+                    items(filteredNotes) { note ->
+                        NoteCard(
+                            note = note,
+                            onEditClick = { onEditNoteClick(note) },
+                            onDeleteClick = { viewModel.deleteNote(it.id) }
+                        )
                     }
                 }
             }
@@ -208,15 +214,7 @@ fun NotesScreen(
     device = "spec:width=411dp,height=891dp"
 )
 @Composable
-@Suppress("ViewModelConstructorInComposable")
 fun NotesScreenPreview() {
-    // For preview, we can directly create a ViewModel instance
-    // This is acceptable for preview purposes only
-    val viewModel = NoteViewModel()
-    
-    NotesScreen(
-        viewModel = viewModel,
-        onAddNoteClick = {},
-        onSettingsClick = {}
-    )
+    // Preview doesn't work with AndroidViewModel, so we show a placeholder
+    Text("Notes Screen Preview")
 }

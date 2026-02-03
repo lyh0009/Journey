@@ -1,6 +1,8 @@
-package com.example.journey.ui.component
+package com.example.journey.ui.screen
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,14 +10,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -24,25 +26,41 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.journey.data.Note
+import com.example.journey.ui.component.*
 import com.example.journey.ui.theme.LocalCustomColors
 import kotlinx.coroutines.delay
 
 /**
- * 添加笔记对话框
- * 使用原生 ModalBottomSheet 设计，白色背景
- * 初始高度为 5 行行高，点击 FAB 后自动弹出键盘
+ * 编辑笔记页面
+ * 独立的编辑页面，不是弹窗
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddNoteDialog(
-    onDismiss: () -> Unit,
+fun EditNoteScreen(
+    note: Note,
+    onBackClick: () -> Unit,
     onSaveNote: (String, List<String>) -> Unit
 ) {
     val editorState = rememberWysiwygEditorState()
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val customColors = LocalCustomColors.current
-    val density = LocalDensity.current
+
+    // 初始化编辑器内容
+    LaunchedEffect(note) {
+        val contentWithTags = if (note.tags.isNotEmpty()) {
+            note.tags.joinToString(" ") { "#$it" } + " " + note.content
+        } else {
+            note.content
+        }
+        editorState.updateTextFieldValue(
+            TextFieldValue(
+                text = contentWithTags,
+                selection = TextRange(contentWithTags.length)
+            )
+        )
+    }
 
     // 标签相关状态
     var showTagSuggestions by remember { mutableStateOf(false) }
@@ -53,11 +71,6 @@ fun AddNoteDialog(
     val filteredTags = remember(currentTagPrefix) {
         if (currentTagPrefix.isEmpty()) tags
         else tags.filter { it.startsWith(currentTagPrefix, ignoreCase = true) }
-    }
-
-    // 计算 5 行行高的高度（每行 24sp 行高 + 间距）
-    val fiveLineHeight = remember(density) {
-        with(density) { (24.sp.toDp() * 5 + 32.dp) } // 5行 + 上下padding
     }
 
     // 检测标签输入
@@ -101,105 +114,79 @@ fun AddNoteDialog(
         return text.replace(Regex("#[\\w\\u4e00-\\u9fa5]+"), "").trim()
     }
 
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = false,
-        confirmValueChange = { true }
-    )
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        containerColor = Color.White, // 白色背景
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        tonalElevation = 0.dp,
-        scrimColor = Color.Black.copy(alpha = 0.5f)
-    ) {
-        // 使用 Box 作为根容器，发送按钮绝对定位在底部
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .background(Color.White)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-                    .padding(bottom = 60.dp) // 为发送按钮留出空间
-            ) {
-                // 标签补全列表
-                TagSuggestions(
-                    visible = showTagSuggestions && filteredTags.isNotEmpty(),
-                    tags = filteredTags,
-                    onTagSelected = { tag ->
-                        insertTag(editorState, tag) { showTagSuggestions = false }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("编辑笔记") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "返回"
+                        )
                     }
+                },
+                actions = {
+                    // 保存按钮
+                    IconButton(
+                        onClick = {
+                            val content = editorState.textFieldValue.text
+                            if (content.isNotBlank()) {
+                                val extractedTags = extractTags(content)
+                                val contentWithoutTags = removeTags(content)
+                                onSaveNote(contentWithoutTags, extractedTags)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = "保存"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
                 )
+            )
+        },
 
-                // 编辑器区域 - 固定为5行行高
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(fiveLineHeight)
-                        .padding(horizontal = 16.dp)
-                ) {
-                    WysiwygEditor(
-                        state = editorState,
-                        onValueChange = { checkIsTypingTag() },
-                        focusRequester = focusRequester,
-                        placeholder = "现在的想法是...",
-                        modifier = Modifier.fillMaxSize()
-                    )
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(paddingValues)
+        ) {
+            // 标签补全列表
+            TagSuggestions(
+                visible = showTagSuggestions && filteredTags.isNotEmpty(),
+                tags = filteredTags,
+                onTagSelected = { tag ->
+                    insertTag(editorState, tag) { showTagSuggestions = false }
                 }
-            }
+            )
 
-            // 发送按钮 - 绝对定位在底部，紧贴键盘
+            // 编辑器区域
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .windowInsetsPadding(WindowInsets.ime) // 紧贴键盘
-                    .navigationBarsPadding(),
-                contentAlignment = Alignment.CenterEnd
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
             ) {
-                Button(
-                    onClick = {
-                        val content = editorState.textFieldValue.text
-                        if (content.isNotBlank()) {
-                            val extractedTags = extractTags(content)
-                            val contentWithoutTags = removeTags(content)
-                            onSaveNote(contentWithoutTags, extractedTags)
-                            onDismiss()
-                        }
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = customColors.markdownLink,
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = "保存笔记",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "发送",
-                        style = TextStyle(fontSize = 14.sp)
-                    )
-                }
+                WysiwygEditor(
+                    state = editorState,
+                    onValueChange = { checkIsTypingTag() },
+                    focusRequester = focusRequester,
+                    placeholder = "编辑笔记内容...",
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
 
-    // 自动获取焦点并弹出键盘
+    // 自动获取焦点
     LaunchedEffect(Unit) {
-        delay(100) // 等待弹窗动画开始
+        delay(100)
         focusRequester.requestFocus()
         keyboardController?.show()
     }
@@ -218,8 +205,8 @@ private fun TagSuggestions(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically()
+        enter = fadeIn(),
+        exit = fadeOut()
     ) {
         Surface(
             modifier = Modifier
@@ -284,15 +271,16 @@ private fun insertTag(
     onComplete()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(
-    showBackground = true,
-    device = "spec:width=411dp,height=891dp"
-)
+@Preview(showBackground = true)
 @Composable
-fun AddNoteDialogPreview() {
-    AddNoteDialog(
-        onDismiss = {},
+fun EditNoteScreenPreview() {
+    val sampleNote = Note(
+        content = "这是一条示例笔记",
+        tags = listOf("示例", "测试")
+    )
+    EditNoteScreen(
+        note = sampleNote,
+        onBackClick = {},
         onSaveNote = { _, _ -> }
     )
 }

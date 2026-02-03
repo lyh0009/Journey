@@ -7,8 +7,9 @@ data class Note(
     val id: String = java.util.UUID.randomUUID().toString(),
     val content: String,
     val tags: List<String> = emptyList(),
-    val createdAt: LocalDateTime = LocalDateTime.now()
+    val createdAt: LocalDateTime? = LocalDateTime.now()
 ) {
     val formattedDate: String
-        get() = createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        get() = createdAt?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) 
+            ?: LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
 }
