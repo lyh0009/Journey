@@ -50,11 +50,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
     implementation("androidx.compose.material:material-icons-extended")
-    
-    // DataStore for data persistence
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation(libs.gson)
-    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

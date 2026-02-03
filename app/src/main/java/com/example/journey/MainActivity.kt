@@ -4,12 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.journey.data.NoteRepository
 import com.example.journey.ui.component.AddNoteDialog
 import com.example.journey.ui.screen.NotesScreen
 import com.example.journey.ui.screen.SettingsScreen
@@ -23,15 +23,12 @@ object Routes {
 }
 
 class MainActivity : ComponentActivity() {
-    private val repository by lazy { NoteRepository(applicationContext) }
-    private val viewModel: NoteViewModel by viewModels {
-        NoteViewModel.Factory(repository)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
+        
+        val viewModel = ViewModelProvider(this)[NoteViewModel::class.java]
+        
         setContent {
             JourneyTheme {
                 MainScreen(viewModel = viewModel)
@@ -46,7 +43,7 @@ fun MainScreen(viewModel: NoteViewModel) {
     var showAddNoteDialog by remember {
         mutableStateOf(false)
     }
-
+    
     NavHost(
         navController = navController,
         startDestination = Routes.NOTES
@@ -62,7 +59,7 @@ fun MainScreen(viewModel: NoteViewModel) {
                 }
             )
         }
-
+        
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBackClick = {
@@ -71,14 +68,15 @@ fun MainScreen(viewModel: NoteViewModel) {
             )
         }
     }
-
+    
     // Show Add Note Dialog
     if (showAddNoteDialog) {
         AddNoteDialog(
             onDismiss = {
                 showAddNoteDialog = false
             },
-            onSaveNote = { content, tags ->
+            onSaveNote = {
+                content, tags ->
                 viewModel.addNote(content, tags)
                 showAddNoteDialog = false
             }
