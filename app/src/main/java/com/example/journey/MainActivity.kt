@@ -160,8 +160,8 @@ fun MainScreen(
                         navController.popBackStack()
                         editingNote = null
                     },
-                    onSaveNote = { content, tags ->
-                        viewModel.updateNote(note.copy(content = content, tags = tags))
+                    onSaveNote = { content, tags, updatedAt ->
+                        viewModel.updateNote(note.copy(content = content, tags = tags, updatedAt = updatedAt))
                         navController.popBackStack()
                         editingNote = null
                     }

@@ -51,7 +51,7 @@ fun EditNoteScreen(
     note: Note,
     availableTags: List<String> = emptyList(),
     onBackClick: () -> Unit,
-    onSaveNote: (String, List<String>) -> Unit
+    onSaveNote: (String, List<String>, java.time.LocalDateTime) -> Unit
 ) {
     val editorState = rememberWysiwygEditorState()
     val focusRequester = remember { FocusRequester() }
@@ -160,7 +160,12 @@ fun EditNoteScreen(
                                 val contentWithoutTags = removeTags(content)
                                 // 合并编辑器中的标签和原有标签（去重）
                                 val allTags = (note.tags + extractedTags).distinct()
-                                onSaveNote(contentWithoutTags, allTags)
+                                // 更新笔记内容、标签和修改时间
+                                onSaveNote(
+                                    contentWithoutTags,
+                                    allTags,
+                                    java.time.LocalDateTime.now()
+                                )
                             }
                         }
                     ) {
@@ -421,6 +426,6 @@ fun EditNoteScreenPreview() {
     EditNoteScreen(
         note = sampleNote,
         onBackClick = {},
-        onSaveNote = { _, _ -> }
+        onSaveNote = { _, _, _ -> }
     )
 }

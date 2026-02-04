@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -89,94 +90,127 @@ fun NoteCard(
                         )
                     }
 
-                    // 下拉菜单
+                    // 下拉菜单 - 图标+文字垂直布局
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
                         shape = RoundedCornerShape(12.dp),
                         containerColor = customColors.cardBackground
                     ) {
-                        // 修改
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "修改",
-                                    style = TextStyle(
-                                        fontSize = 14.sp,
-                                        color = customColors.markdownBody
-                                    )
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Rounded.Edit,
-                                    contentDescription = "修改",
-                                    tint = customColors.markdownHint,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onEditClick(note)
-                            }
-                        )
-                        // 导出
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "导出",
-                                    style = TextStyle(
-                                        fontSize = 14.sp,
-                                        color = customColors.markdownBody
-                                    )
-                                )
-                            },
-                            leadingIcon = {
+                        // 顶部图标按钮行
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // 导出
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable {
+                                    showMenu = false
+                                    showExportDialog = true
+                                }
+                            ) {
                                 Icon(
                                     imageVector = Icons.Rounded.IosShare,
                                     contentDescription = "导出",
-                                    tint = customColors.markdownHint,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = customColors.markdownBody,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                            },
-                            onClick = {
-                                showMenu = false
-                                showExportDialog = true
-                            }
-                        )
-                        // 删除
-                        DropdownMenuItem(
-                            text = {
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "删除",
+                                    text = "导出",
                                     style = TextStyle(
-                                        fontSize = 14.sp,
+                                        fontSize = 12.sp,
                                         color = customColors.markdownBody
                                     )
                                 )
-                            },
-                            leadingIcon = {
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            // 编辑
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable {
+                                    showMenu = false
+                                    onEditClick(note)
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = "编辑",
+                                    tint = customColors.markdownBody,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "编辑",
+                                    style = TextStyle(
+                                        fontSize = 12.sp,
+                                        color = customColors.markdownBody
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            // 删除
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable {
+                                    showMenu = false
+                                    onDeleteClick(note)
+                                }
+                            ){
                                 Icon(
                                     imageVector = Icons.Rounded.Delete,
                                     contentDescription = "删除",
-                                    tint = customColors.markdownHint,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = customColors.markdownBody,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onDeleteClick(note)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "删除",
+                                    style = TextStyle(
+                                        fontSize = 12.sp,
+                                        color = customColors.markdownBody
+                                    )
+                                )
                             }
-                        )
+                        }
                         // 分隔线
                         HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 4.dp), // 分割线高度
-                            thickness = 0.5.dp, // 分割线宽度
-                            color = customColors.markdownHint.copy(alpha = 0.2f) // 分割线颜色
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 0.5.dp,
+                            color = customColors.markdownHint.copy(alpha = 0.2f)
                         )
-                        // 字数统计
-                        // 创建时间
-                        // 最后修改时间
+
+                        // 笔记信息
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Text(
+                                text = "字数统计: ${note.content.length}",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    color = customColors.markdownHint
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "创建时间: ${note.formattedDate}",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    color = customColors.markdownHint
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "最后编辑时间: ${note.formattedUpdatedDate}",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    color = customColors.markdownHint
+                                )
+                            )
+                        }
                     }
                 }
             }
