@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.DataObject
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.TextSnippet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -77,7 +78,7 @@ fun NoteCard(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.MoreVert,
+                            imageVector = Icons.Rounded.MoreHoriz,
                             contentDescription = "更多选项",
                             tint = customColors.markdownHint
                         )

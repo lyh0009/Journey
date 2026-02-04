@@ -3,6 +3,7 @@ package com.example.journey.ui.component
 import android.media.SoundPool
 import android.util.Log
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material3.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -267,7 +270,8 @@ fun AddNoteDialog(
 }
 
 /**
- * 标签建议列表
+ * 标签建议弹出层
+ * 悬浮在输入框上方，带有流畅动画效果
  */
 @Composable
 private fun TagSuggestions(
@@ -277,38 +281,71 @@ private fun TagSuggestions(
     modifier: Modifier = Modifier
 ) {
     val customColors = LocalCustomColors.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
+        enter = fadeIn(animationSpec = tween(200)) + 
+                expandVertically(
+                    expandFrom = Alignment.Bottom,
+                    animationSpec = tween(300)
+                ),
+        exit = fadeOut(animationSpec = tween(150)) + 
+               shrinkVertically(
+                   shrinkTowards = Alignment.Bottom,
+                   animationSpec = tween(200)
+               ),
         modifier = modifier
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp),
-            shadowElevation = 4.dp, // 增加阴影使其更突出
-            color = Color(0xFFF5F5F5)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .heightIn(max = 240.dp),
+            shape = RoundedCornerShape(16.dp),
+            shadowElevation = 8.dp,
+            color = Color.White
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
+            LazyColumn {
                 items(tags) { tag ->
-                    Text(
-                        text = "#$tag",
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            color = customColors.markdownBody,
-                            fontWeight = FontWeight.Medium
-                        ),
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onTagSelected(tag) }
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
+                            .clickable {
+                                haptic.performHapticFeedback(
+                                    androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
+                                )
+                                onTagSelected(tag)
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "#",
+                            style = TextStyle(
+                                color = Color.Gray,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = tag,
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                color = customColors.markdownBody
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // 分割线
+                    if (tag != tags.last()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 0.5.dp,
+                            color = Color.LightGray.copy(alpha = 0.3f)
+                        )
+                    }
                 }
             }
         }
