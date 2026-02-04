@@ -9,6 +9,11 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.TextSnippet
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DataObject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -27,6 +32,9 @@ import com.example.journey.ui.component.NoteCard
 import com.example.journey.ui.theme.LocalCustomColors
 import com.example.journey.viewmodel.NoteViewModel
 import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,12 +42,16 @@ fun NotesScreen(
     viewModel: NoteViewModel,
     onAddNoteClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onEditNoteClick: (Note) -> Unit = {}
+    onLogsClick: () -> Unit = {},
+    onEditNoteClick: (Note) -> Unit = {},
+    onExport: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     val filteredNotes = viewModel.getFilteredNotes()
     var isSearchVisible by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
     val customColors = LocalCustomColors.current
-    
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     // Drawer state management 抽屉状态管理
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -79,6 +91,25 @@ fun NotesScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Drawer items
+                // 导出功能
+                NavigationDrawerItem(
+                    label = { Text(text = "导出") },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Download,
+                            contentDescription = "导出"
+                        )
+                    },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            showExportDialog = true
+                        }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                // settings
                 NavigationDrawerItem(
                     label = { Text(text = "设置") },
                     icon = {
@@ -97,7 +128,24 @@ fun NotesScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Add more drawer items here if needed
+                // logs
+                NavigationDrawerItem(
+                    label = { Text(text = "日志") },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Description,
+                            contentDescription = "日志"
+                        )
+                    },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onLogsClick()
+                        }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
             }
         }
     ) {
@@ -211,14 +259,227 @@ fun NotesScreen(
                         NoteCard(
                             note = note,
                             onEditClick = { onEditNoteClick(note) },
-                            onDeleteClick = { viewModel.deleteNote(it.id) }
+                            onDeleteClick = { viewModel.deleteNote(it.id) },
+                            onExport = onExport
                         )
                     }
                 }
             }
         }
+
+        // 导出对话框
+        if (showExportDialog) {
+            ExportDialog(
+                notes = filteredNotes,
+                onDismiss = { showExportDialog = false },
+                onExport = { format, content ->
+                    val dateStr = java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                    val (mimeType, fileName) = when (format) {
+                        ExportFormat.MARKDOWN -> "text/markdown" to "Notes_$dateStr.md"
+                        ExportFormat.JSON -> "application/json" to "Notes_$dateStr.json"
+                        ExportFormat.TEXT -> "text/plain" to "Notes_$dateStr.txt"
+                    }
+                    onExport(content, mimeType, fileName)
+                    showExportDialog = false
+                }
+            )
+        }
     }
 }
+
+/**
+ * 导出格式
+ */
+enum class ExportFormat {
+    MARKDOWN, JSON, TEXT
+}
+
+/**
+ * 导出对话框
+ */
+@Composable
+fun ExportDialog(
+    notes: List<Note>,
+    onDismiss: () -> Unit,
+    onExport: (ExportFormat, String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("导出笔记") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("选择导出格式：", style = TextStyle(fontSize = 14.sp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Markdown 格式
+                ExportFormatItem(
+                    icon = Icons.Rounded.Description,
+                    title = "Markdown (.md)",
+                    description = "导出为 Markdown 格式，保留标签和格式",
+                    onClick = {
+                        val content = exportToMarkdown(notes)
+                        onExport(ExportFormat.MARKDOWN, content)
+                    }
+                )
+
+                // JSON 格式
+                ExportFormatItem(
+                    icon = Icons.Rounded.DataObject,
+                    title = "JSON (.json)",
+                    description = "导出为 JSON 格式，包含完整数据",
+                    onClick = {
+                        val content = exportToJson(notes)
+                        onExport(ExportFormat.JSON, content)
+                    }
+                )
+
+                // TXT 格式
+                ExportFormatItem(
+                    icon = Icons.Rounded.TextSnippet,
+                    title = "纯文本 (.txt)",
+                    description = "导出为纯文本格式，简洁易读",
+                    onClick = {
+                        val content = exportToText(notes)
+                        onExport(ExportFormat.TEXT, content)
+                    }
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ExportFormatItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                Text(
+                    text = description,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 导出为 Markdown 格式
+ */
+private fun exportToMarkdown(notes: List<Note>): String {
+    val sb = StringBuilder()
+    sb.appendLine("# 笔记导出")
+    sb.appendLine()
+    sb.appendLine("导出时间: ${java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+    sb.appendLine("笔记数量: ${notes.size}")
+    sb.appendLine()
+    sb.appendLine("---")
+    sb.appendLine()
+
+    notes.forEachIndexed { index, note ->
+        sb.appendLine("## 笔记 ${index + 1}")
+        sb.appendLine()
+        sb.appendLine("**时间:** ${note.formattedDate}")
+        if (note.tags.isNotEmpty()) {
+            sb.appendLine("**标签:** ${note.tags.joinToString(", ") { "#$it" }}")
+        }
+        sb.appendLine()
+        sb.appendLine(note.content)
+        sb.appendLine()
+        sb.appendLine("---")
+        sb.appendLine()
+    }
+
+    return sb.toString()
+}
+
+/**
+ * 导出为 JSON 格式
+ */
+private fun exportToJson(notes: List<Note>): String {
+    val gson = Gson()
+    val exportData = mapOf(
+        "exportTime" to java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+        "count" to notes.size,
+        "notes" to notes.map { note ->
+            mapOf(
+                "id" to note.id,
+                "content" to note.content,
+                "tags" to note.tags,
+                "createdAt" to note.formattedDate
+            )
+        }
+    )
+    return gson.toJson(exportData)
+}
+
+/**
+ * 导出为纯文本格式
+ */
+private fun exportToText(notes: List<Note>): String {
+    val sb = StringBuilder()
+    sb.appendLine("笔记导出")
+    sb.appendLine("导出时间: ${java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+    sb.appendLine("笔记数量: ${notes.size}")
+    sb.appendLine()
+    sb.appendLine("=".repeat(50))
+    sb.appendLine()
+
+    notes.forEachIndexed { index, note ->
+        sb.appendLine("[${index + 1}] ${note.formattedDate}")
+        if (note.tags.isNotEmpty()) {
+            sb.appendLine("标签: ${note.tags.joinToString(", ")}")
+        }
+        sb.appendLine()
+        sb.appendLine(note.content)
+        sb.appendLine()
+        sb.appendLine("-".repeat(50))
+        sb.appendLine()
+    }
+
+    return sb.toString()
+}
+
+
 
 @Preview(
     showBackground = true,

@@ -1,5 +1,7 @@
 package com.example.journey.ui.component
 
+import android.media.SoundPool
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
@@ -24,8 +27,10 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.journey.R
 import com.example.journey.ui.theme.LocalCustomColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * 添加笔记对话框
@@ -43,11 +48,46 @@ fun AddNoteDialog(
     val keyboardController = LocalSoftwareKeyboardController.current
     val customColors = LocalCustomColors.current
     val density = LocalDensity.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // SoundPool 音效 - 使用系统音效流类型
+    val soundPool = remember {
+        SoundPool.Builder()
+            .setMaxStreams(1)
+            .setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+    }
+    var soundId by remember { mutableStateOf(0) }
+    var isSoundLoaded by remember { mutableStateOf(false) }
+
+    // 加载音效 - 使用转换后的文件
+    LaunchedEffect(Unit) {
+        soundId = soundPool.load(context, R.raw.seed_click_sound, 1)
+        Log.d("AddNoteDialog", "Loading sound, soundId: $soundId")
+        soundPool.setOnLoadCompleteListener { _, sampleId, status ->
+            Log.d("AddNoteDialog", "Sound loaded, sampleId: $sampleId, status: $status")
+            if (sampleId == soundId && status == 0) {
+                isSoundLoaded = true
+                Log.d("AddNoteDialog", "Sound loaded successfully")
+            } else {
+                Log.e("AddNoteDialog", "Sound failed to load, status: $status")
+            }
+        }
+    }
+
+    // 注意：不在此处释放 SoundPool，因为弹窗关闭时音效可能还在播放
+    // SoundPool 会在应用进程结束时自动释放
 
     // 标签相关状态
     var showTagSuggestions by remember { mutableStateOf(false) }
     var currentTagPrefix by remember { mutableStateOf("") }
-    val tags = remember { mutableStateListOf("开心", "工作", "生活", "学习", "重要", "灵感") }
+    val tags = remember { mutableStateListOf<String>() }
 
     // 过滤标签
     val filteredTags = remember(currentTagPrefix) {
@@ -169,10 +209,21 @@ fun AddNoteDialog(
                     onClick = {
                         val content = editorState.textFieldValue.text
                         if (content.isNotBlank()) {
+                            // 播放发送音效
+                            if (isSoundLoaded && soundId != 0) {
+                                val playId = soundPool.play(soundId, 1f, 1f, 1, 0, 1f)
+                                Log.d("AddNoteDialog", "Playing sound, playId: $playId")
+                            } else {
+                                Log.d("AddNoteDialog", "Sound not loaded yet, isSoundLoaded: $isSoundLoaded, soundId: $soundId")
+                            }
                             val extractedTags = extractTags(content)
                             val contentWithoutTags = removeTags(content)
                             onSaveNote(contentWithoutTags, extractedTags)
-                            onDismiss()
+                            // 延迟关闭弹窗，让音效有时间播放
+                            scope.launch {
+                                delay(500)
+                                onDismiss()
+                            }
                         }
                     },
                     shape = RoundedCornerShape(20.dp),

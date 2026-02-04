@@ -117,7 +117,7 @@ fun EditNoteScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("编辑笔记") },
+                title = { Text("") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
