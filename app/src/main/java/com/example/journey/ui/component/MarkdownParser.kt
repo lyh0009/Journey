@@ -4,7 +4,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.sp
 
 /**
  * Markdown 解析器接口
@@ -63,14 +62,12 @@ object MarkdownStyles {
         SpanStyle(background = backgroundColor)
     fun link(color: androidx.compose.ui.graphics.Color) = 
         SpanStyle(color = color, textDecoration = TextDecoration.Underline)
-    fun listMarker(color: androidx.compose.ui.graphics.Color) = 
-        SpanStyle(color = color, fontWeight = FontWeight.Bold)
 }
 
 /**
  * Markdown 解析器实现
- * 支持：段落、无序列表、有序列表、加粗、斜体、删除线、高亮、下划线、链接
- * 不支持：标题、行内代码、引用块、分隔线、表格
+ * 已完成：标题、段落、无序列表、有序列表、加粗、斜体、删除线、高亮、下划线、链接
+ * 未完成：内代码、引用块、分隔线、表格
  */
 class MarkdownParserImpl : MarkdownParser {
     
@@ -121,64 +118,66 @@ class MarkdownParserImpl : MarkdownParser {
     
     override fun parseInline(text: String): List<MarkdownToken> {
         val tokens = mutableListOf<MarkdownToken>()
-        var remaining = text
-
-        // 按优先级定义正则表达式
-        val patterns = listOf(
-            Regex("~~([^~]+)~~") to { match: MatchResult ->
-                MarkdownToken.Strikethrough(match.groupValues[1])
-            },
-            Regex("==([^=]+)==") to { match: MatchResult ->
-                MarkdownToken.Highlight(match.groupValues[1])
-            },
-            Regex("\\*\\*([^*]+)\\*\\*") to { match: MatchResult ->
-                MarkdownToken.Bold(match.groupValues[1])
-            },
-            Regex("__([^_]+)__") to { match: MatchResult ->
-                MarkdownToken.Bold(match.groupValues[1])
-            },
-            Regex("(?<!\\*)\\*([^*]+)\\*(?!\\*)") to { match: MatchResult ->
-                MarkdownToken.Italic(match.groupValues[1])
-            },
-            Regex("(?<!_)_([^_]+)_(?!_)") to { match: MatchResult ->
-                MarkdownToken.Italic(match.groupValues[1])
-            },
-            Regex("\\[([^\\]]+)\\]\\(([^)]+)\\)") to { match: MatchResult ->
-                MarkdownToken.Link(match.groupValues[1], match.groupValues[2])
-            },
-            Regex("<u>([^<]+)</u>") to { match: MatchResult ->
-                MarkdownToken.Underline(match.groupValues[1])
-            },
-            Regex("#([\\w\\u4e00-\\u9fa5]+)") to { match: MatchResult ->
-                MarkdownToken.Tag(match.groupValues[1])
-            }
+        
+        // 使用单个合并正则表达式一次性扫描所有 Token
+        // 优先级：删除线、高亮、粗体、斜体、链接、下划线、标签
+        val combinedPattern = Regex(
+            "(~~([^~]+)~~)|" +                    // 1-2: 删除线
+            "(==([^=]+)==)|" +                   // 3-4: 高亮
+            "(\\*\\*([^*]+)\\*\\*)|" +            // 5-6: 粗体 **
+            "(__([^_]+)__)|" +                   // 7-8: 粗体 __
+            "(\\*([^*]+)\\*)|" +                 // 9-10: 斜体 *
+            "(_([^_]+)_)|" +                     // 11-12: 斜体 _
+            "(\\[([^]]+)]\\(([^)]+)\\))|" +    // 13-15: 链接 [text](url)
+            "(<u>([^<]+)</u>)|" +                 // 16-17: 下划线
+            "(#([\\w\\u4e00-\\u9fa5]+))"         // 18-19: 标签
         )
         
-        while (remaining.isNotEmpty()) {
-            var earliestMatch: Pair<MatchResult, (MatchResult) -> MarkdownToken>? = null
-            var earliestStart = Int.MAX_VALUE
+        var lastEnd = 0
+        
+        combinedPattern.findAll(text).forEach { match ->
+            // 添加匹配前的普通文本
+            if (match.range.first > lastEnd) {
+                tokens.add(MarkdownToken.Text(text.substring(lastEnd, match.range.first)))
+            }
             
-            for ((regex, factory) in patterns) {
-                val match = regex.find(remaining)
-                if (match != null && match.range.first < earliestStart) {
-                    earliestStart = match.range.first
-                    earliestMatch = match to factory
+            // 根据捕获组判断 Token 类型
+            when {
+                match.groups[1] != null -> { // 删除线 ~~
+                    tokens.add(MarkdownToken.Strikethrough(match.groups[2]!!.value))
+                }
+                match.groups[3] != null -> { // 高亮 ==
+                    tokens.add(MarkdownToken.Highlight(match.groups[4]!!.value))
+                }
+                match.groups[5] != null -> { // 粗体 **
+                    tokens.add(MarkdownToken.Bold(match.groups[6]!!.value))
+                }
+                match.groups[7] != null -> { // 粗体 __
+                    tokens.add(MarkdownToken.Bold(match.groups[8]!!.value))
+                }
+                match.groups[9] != null -> { // 斜体 *
+                    tokens.add(MarkdownToken.Italic(match.groups[10]!!.value))
+                }
+                match.groups[11] != null -> { // 斜体 _
+                    tokens.add(MarkdownToken.Italic(match.groups[12]!!.value))
+                }
+                match.groups[13] != null -> { // 链接 [text](url)
+                    tokens.add(MarkdownToken.Link(match.groups[14]!!.value, match.groups[15]!!.value))
+                }
+                match.groups[16] != null -> { // 下划线 <u>
+                    tokens.add(MarkdownToken.Underline(match.groups[17]!!.value))
+                }
+                match.groups[18] != null -> { // 标签 #
+                    tokens.add(MarkdownToken.Tag(match.groups[19]!!.value))
                 }
             }
             
-            if (earliestMatch == null) {
-                tokens.add(MarkdownToken.Text(remaining))
-                break
-            } else {
-                val (match, factory) = earliestMatch
-                
-                if (match.range.first > 0) {
-                    tokens.add(MarkdownToken.Text(remaining.substring(0, match.range.first)))
-                }
-                
-                tokens.add(factory(match))
-                remaining = remaining.substring(match.range.last + 1)
-            }
+            lastEnd = match.range.last + 1
+        }
+        
+        // 添加剩余文本
+        if (lastEnd < text.length) {
+            tokens.add(MarkdownToken.Text(text.substring(lastEnd)))
         }
         
         return tokens
@@ -189,6 +188,8 @@ class MarkdownParserImpl : MarkdownParser {
     }
     
     private fun isOrderedListLine(line: String): Boolean {
+        // 确保不是标题（不以 # 开头）
+        if (line.trim().startsWith("#")) return false
         return line.matches(Regex("^\\s*\\d+\\.\\s+.*"))
     }
     
@@ -196,20 +197,25 @@ class MarkdownParserImpl : MarkdownParser {
         val items = mutableListOf<ListItem>()
         var i = startIndex
         val baseIndent = countIndent(lines[startIndex])
-        
+
         while (i < lines.size) {
             val line = lines[i]
+
+            // 关键修复：如果遇到标题行，立即结束列表解析
+            if (isHeaderLine(line)) break
+
             if (line.isBlank()) {
                 i++
                 continue
             }
-            
+
             val currentIndent = countIndent(line)
             if (currentIndent < baseIndent) break
-            
+
             if (isUnorderedListLine(line)) {
                 val content = extractListContent(line)
-                val indentLevel = (currentIndent - baseIndent) / 2
+                // 使用相对缩进级别，而不是固定除以2
+                val indentLevel = if (currentIndent > baseIndent) 1 else 0
                 items.add(ListItem(content, indentLevel))
                 i++
             } else if (isOrderedListLine(line)) {
@@ -237,6 +243,10 @@ class MarkdownParserImpl : MarkdownParser {
 
         while (i < lines.size) {
             val line = lines[i]
+
+            // 关键修复：如果遇到标题行，立即结束列表解析
+            if (isHeaderLine(line)) break
+
             if (line.isBlank()) {
                 i++
                 continue
@@ -247,7 +257,8 @@ class MarkdownParserImpl : MarkdownParser {
 
             if (isOrderedListLine(line)) {
                 val content = extractOrderedListContent(line)
-                val indentLevel = (currentIndent - baseIndent) / 2
+                // 使用相对缩进级别，而不是固定除以2
+                val indentLevel = if (currentIndent > baseIndent) 1 else 0
                 items.add(currentNumber to ListItem(content, indentLevel))
                 currentNumber++
                 i++
@@ -264,7 +275,7 @@ class MarkdownParserImpl : MarkdownParser {
                 i++
             }
         }
-        
+
         return items to i
     }
     
@@ -274,7 +285,8 @@ class MarkdownParserImpl : MarkdownParser {
         
         while (i < lines.size) {
             val line = lines[i]
-            if (line.isBlank() || isUnorderedListLine(line) || isOrderedListLine(line)) {
+            // 修复：添加标题判断，防止标题被吞入段落
+            if (line.isBlank() || isUnorderedListLine(line) || isOrderedListLine(line) || isHeaderLine(line)) {
                 break
             }
             

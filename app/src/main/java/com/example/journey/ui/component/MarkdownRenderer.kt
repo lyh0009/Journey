@@ -57,7 +57,8 @@ fun MarkdownRenderer(
                         addStyle(
                             SpanStyle(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = fontSize
+                                fontSize = fontSize,
+                                color = customColors.markdownHeading
                             ),
                             start,
                             this.length
@@ -123,7 +124,11 @@ private fun parseInlineToAnnotatedString(
             val tokens = parser.parseInline(line)
             tokens.forEach { token ->
                 when (token) {
-                    is MarkdownToken.Text -> append(token.content)
+                    is MarkdownToken.Text -> {
+                        val start = this.length
+                        append(token.content)
+                        addStyle(SpanStyle(color = customColors.markdownBody), start, this.length)
+                    }
                     is MarkdownToken.Bold -> {
                         val start = this.length
                         append(token.content)
@@ -185,6 +190,12 @@ private fun parseInlineToAnnotatedString(
 fun MarkdownRendererPreview() {
     val sampleContent = """
         这是一条**加粗**的文本，还有*斜体*和~~删除线~~。
+        
+        # 标题一
+        
+        ## 二级标题
+        
+        ## 二级标题
         
         这是==高亮==文本和<u>下划线</u>。
         
