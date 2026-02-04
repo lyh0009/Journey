@@ -100,6 +100,10 @@ fun WysiwygPreview(
                         }
                     }
                 }
+                is MarkdownElement.EmptyLine -> {
+                    // 空行渲染为占位高度
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
 
             if (index < elements.size - 1) {

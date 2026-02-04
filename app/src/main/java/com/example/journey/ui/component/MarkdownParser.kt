@@ -20,10 +20,11 @@ interface MarkdownParser {
  */
 sealed class MarkdownElement {
     abstract val rawText: String
-    
+
     data class Paragraph(override val rawText: String, val content: String) : MarkdownElement()
     data class UnorderedList(override val rawText: String, val items: List<ListItem>) : MarkdownElement()
     data class OrderedList(override val rawText: String, val items: List<Pair<Int, ListItem>>) : MarkdownElement()
+    data class EmptyLine(override val rawText: String) : MarkdownElement()
 }
 
 /**
@@ -75,28 +76,29 @@ class MarkdownParserImpl : MarkdownParser {
         val elements = mutableListOf<MarkdownElement>()
         val lines = content.lines()
         var i = 0
-        
+
         while (i < lines.size) {
             val line = lines[i]
-            
+
             when {
                 line.isBlank() -> {
+                    // 添加空行元素
+                    elements.add(MarkdownElement.EmptyLine(line))
                     i++
-                    continue
                 }
-                
+
                 isUnorderedListLine(line) -> {
                     val (items, nextIndex) = parseUnorderedList(lines, i)
                     elements.add(MarkdownElement.UnorderedList("", items))
                     i = nextIndex
                 }
-                
+
                 isOrderedListLine(line) -> {
                     val (items, nextIndex) = parseOrderedList(lines, i)
                     elements.add(MarkdownElement.OrderedList("", items))
                     i = nextIndex
                 }
-                
+
                 else -> {
                     // 段落
                     val (paragraph, nextIndex) = parseParagraph(lines, i)
@@ -105,7 +107,7 @@ class MarkdownParserImpl : MarkdownParser {
                 }
             }
         }
-        
+
         return elements
     }
     

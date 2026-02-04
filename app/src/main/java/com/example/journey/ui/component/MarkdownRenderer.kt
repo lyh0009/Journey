@@ -56,9 +56,13 @@ fun MarkdownRenderer(
                             append("\n")
                         }
                     }
+                    is MarkdownElement.EmptyLine -> {
+                        // 空行添加换行符
+                        append("\n")
+                    }
                 }
-                // 段落之间添加空行
-                if (index < elements.size - 1) {
+                // 段落之间添加空行（除了 EmptyLine 元素）
+                if (index < elements.size - 1 && element !is MarkdownElement.EmptyLine) {
                     append("\n")
                 }
             }

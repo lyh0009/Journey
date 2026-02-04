@@ -143,15 +143,20 @@ private fun RenderedOrderedListItem(line: String, customColors: com.example.jour
  */
 @Composable
 private fun RenderedInlineText(line: String, customColors: com.example.journey.ui.theme.MarkdownCustomColors) {
-    Text(
-        text = buildInlineAnnotatedString(line, customColors),
-        style = TextStyle(
-            fontSize = 16.sp,
-            color = customColors.markdownBody,
-            lineHeight = 24.sp
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
+    // 空行渲染为占位符，保持行高一致
+    if (line.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().height(24.dp))
+    } else {
+        Text(
+            text = buildInlineAnnotatedString(line, customColors),
+            style = TextStyle(
+                fontSize = 16.sp,
+                color = customColors.markdownBody,
+                lineHeight = 24.sp
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 /**
