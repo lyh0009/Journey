@@ -20,8 +20,8 @@ import com.example.journey.ui.theme.LocalCustomColors
 /**
  * Markdown 渲染器
  * 职责：将 Markdown 内容渲染为 Compose UI
- * 支持：段落、无序列表、有序列表、加粗、斜体、删除线、高亮、下划线、链接
- * 不支持：标题、行内代码、引用块、分隔线、表格
+ * 支持：段落、标题、无序列表、有序列表、加粗、斜体、删除线、高亮、下划线、链接
+ * 不支持：行内代码、引用块、分隔线、表格
  */
 @Composable
 fun MarkdownRenderer(
@@ -41,6 +41,27 @@ fun MarkdownRenderer(
                 when (element) {
                     is MarkdownElement.Paragraph -> {
                         append(parseInlineToAnnotatedString(element.content, parser, customColors))
+                    }
+                    is MarkdownElement.Header -> {
+                        val start = this.length
+                        append(parseInlineToAnnotatedString(element.content, parser, customColors))
+                        // 根据标题级别应用不同样式
+                        val fontSize = when (element.level) {
+                            1 -> 24.sp
+                            2 -> 22.sp
+                            3 -> 20.sp
+                            4 -> 18.sp
+                            5 -> 17.sp
+                            else -> 16.sp
+                        }
+                        addStyle(
+                            SpanStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = fontSize
+                            ),
+                            start,
+                            this.length
+                        )
                     }
                     is MarkdownElement.UnorderedList -> {
                         element.items.forEach { item ->

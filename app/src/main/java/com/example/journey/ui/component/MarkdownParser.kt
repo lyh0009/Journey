@@ -25,6 +25,7 @@ sealed class MarkdownElement {
     data class UnorderedList(override val rawText: String, val items: List<ListItem>) : MarkdownElement()
     data class OrderedList(override val rawText: String, val items: List<Pair<Int, ListItem>>) : MarkdownElement()
     data class EmptyLine(override val rawText: String) : MarkdownElement()
+    data class Header(override val rawText: String, val level: Int, val content: String) : MarkdownElement()
 }
 
 /**
@@ -86,6 +87,12 @@ class MarkdownParserImpl : MarkdownParser {
                     // 添加空行元素
                     elements.add(MarkdownElement.EmptyLine(line))
                     i++
+                }
+
+                isHeaderLine(line) -> {
+                    val (header, nextIndex) = parseHeader(lines, i)
+                    elements.add(header)
+                    i = nextIndex
                 }
 
                 isUnorderedListLine(line) -> {
@@ -294,5 +301,18 @@ class MarkdownParserImpl : MarkdownParser {
     private fun extractOrderedListContent(line: String): String {
         val match = Regex("^\\s*\\d+\\.\\s+(.*)$").find(line)
         return match?.groupValues?.get(1) ?: line.trim()
+    }
+
+    // 标题相关函数
+    private fun isHeaderLine(line: String): Boolean {
+        return Regex("^#{1,6}\\s+.+$").matches(line.trim())
+    }
+
+    private fun parseHeader(lines: List<String>, startIndex: Int): Pair<MarkdownElement.Header, Int> {
+        val line = lines[startIndex].trim()
+        val match = Regex("^(#{1,6})\\s+(.+)$").find(line)
+        val level = match?.groupValues?.get(1)?.length ?: 1
+        val content = match?.groupValues?.get(2) ?: line
+        return MarkdownElement.Header(line, level, content) to (startIndex + 1)
     }
 }

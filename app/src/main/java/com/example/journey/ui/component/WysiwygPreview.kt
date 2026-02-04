@@ -104,6 +104,27 @@ fun WysiwygPreview(
                     // 空行渲染为占位高度
                     Spacer(modifier = Modifier.height(24.dp))
                 }
+                is MarkdownElement.Header -> {
+                    val fontSize = when (element.level) {
+                        1 -> 24.sp
+                        2 -> 22.sp
+                        3 -> 20.sp
+                        4 -> 18.sp
+                        5 -> 17.sp
+                        else -> 16.sp
+                    }
+                    Text(
+                        text = buildInlineAnnotatedString(element.content, parser, customColors),
+                        style = TextStyle(
+                            fontSize = fontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = customColors.markdownBody,
+                            lineHeight = 24.sp
+                        ),
+                        maxLines = maxLines,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
             }
 
             if (index < elements.size - 1) {
