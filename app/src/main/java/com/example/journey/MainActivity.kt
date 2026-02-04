@@ -18,6 +18,7 @@ import com.example.journey.ui.screen.LogsScreen
 import com.example.journey.ui.screen.NotesScreen
 import com.example.journey.ui.screen.SettingsScreen
 import com.example.journey.ui.theme.JourneyTheme
+import com.example.journey.utils.AppSoundPlayer
 import com.example.journey.viewmodel.NoteViewModel
 
 // 定义导航路由
@@ -75,6 +76,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // 初始化全局音效播放器
+        AppSoundPlayer.init(this)
 
         val viewModel = ViewModelProvider(this)[NoteViewModel::class.java]
 
@@ -151,6 +155,7 @@ fun MainScreen(
             if (note != null) {
                 EditNoteScreen(
                     note = note,
+                    availableTags = viewModel.getAllTags(),
                     onBackClick = {
                         navController.popBackStack()
                         editingNote = null

@@ -1,7 +1,5 @@
 package com.example.journey.ui.component
 
-import android.media.SoundPool
-import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -22,7 +20,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
@@ -33,8 +30,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
-import com.example.journey.R
 import com.example.journey.ui.theme.LocalCustomColors
+import com.example.journey.utils.AppSoundPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -55,41 +52,8 @@ fun AddNoteDialog(
     val keyboardController = LocalSoftwareKeyboardController.current
     val customColors = LocalCustomColors.current
     val density = LocalDensity.current
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    // SoundPool 音效 - 使用系统音效流类型
-    val soundPool = remember {
-        SoundPool.Builder()
-            .setMaxStreams(1)
-            .setAudioAttributes(
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .build()
-    }
-    var soundId by remember { mutableStateOf(0) }
-    var isSoundLoaded by remember { mutableStateOf(false) }
-
-    // 加载音效 - 使用转换后的文件
-    LaunchedEffect(Unit) {
-        soundId = soundPool.load(context, R.raw.seed_click_sound, 1)
-        Log.d("AddNoteDialog", "Loading sound, soundId: $soundId")
-        soundPool.setOnLoadCompleteListener { _, sampleId, status ->
-            Log.d("AddNoteDialog", "Sound loaded, sampleId: $sampleId, status: $status")
-            if (sampleId == soundId && status == 0) {
-                isSoundLoaded = true
-                Log.d("AddNoteDialog", "Sound loaded successfully")
-            } else {
-                Log.e("AddNoteDialog", "Sound failed to load, status: $status")
-            }
-        }
-    }
-
-    // 注意：不在此处释放 SoundPool，因为弹窗关闭时音效可能还在播放
-    // SoundPool 会在应用进程结束时自动释放
+    val haptic = LocalHapticFeedback.current
 
     // 标签相关状态
     var showTagSuggestions by remember { mutableStateOf(false) }
@@ -235,21 +199,16 @@ fun AddNoteDialog(
                     onClick = {
                         val content = editorState.textFieldValue.text
                         if (content.isNotBlank()) {
-                            // 播放发送音效
-                            if (isSoundLoaded && soundId != 0) {
-                                val playId = soundPool.play(soundId, 1f, 1f, 1, 0, 1f)
-                                Log.d("AddNoteDialog", "Playing sound, playId: $playId")
-                            } else {
-                                Log.d("AddNoteDialog", "Sound not loaded yet, isSoundLoaded: $isSoundLoaded, soundId: $soundId")
-                            }
+                            // 播放发送音效（使用全局音效器）
+                            AppSoundPlayer.play()
+                            // 触发震动反馈
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            
                             val extractedTags = extractTags(content)
                             val contentWithoutTags = removeTags(content)
                             onSaveNote(contentWithoutTags, extractedTags)
-                            // 延迟关闭弹窗，让音效有时间播放
-                            scope.launch {
-                                delay(700)
-                                onDismiss()
-                            }
+                            // 直接关闭弹窗，音效器在全局不受弹窗生命周期影响
+                            onDismiss()
                         }
                     },
                     shape = RoundedCornerShape(20.dp),
@@ -284,7 +243,7 @@ fun AddNoteDialog(
 
 /**
  * 标签建议 Popup
- * 跟随光标位置动态显示，不遮挡光标
+ * 智能选择显示位置：优先在光标下方，空间不足时在上方
  */
 @Composable
 private fun TagSuggestionsPopup(
@@ -298,25 +257,45 @@ private fun TagSuggestionsPopup(
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
 
-    // 计算 Popup 位置：在光标上方显示
-    // 如果光标在顶部（y < 280），则在下方显示
-    val popupYOffset = remember(cursorOffset) {
+    // 计算 Popup 显示位置
+    val (popupOffset, expandFrom) = remember(cursorOffset, tags.size) {
         with(density) {
-            val listHeight = 280.dp.toPx().toInt()
-            if (cursorOffset.y < listHeight + 50) {
-                // 光标在顶部，向下显示
-                cursorOffset.y + 50
+            // 行高（24sp）
+            val lineHeight = 24.sp.toDp().toPx().toInt()
+
+            // 估算列表高度（每个标签项约 48dp + 分割线）
+            val estimatedItemHeight = 48.dp.toPx().toInt()
+            val estimatedListHeight = (tags.size * estimatedItemHeight).coerceIn(100, 280.dp.toPx().toInt())
+
+            // 编辑器高度（5行）
+            val editorHeight = (24.sp.toDp() * 5 + 32.dp).toPx().toInt()
+
+            // 光标下方可用空间
+            val spaceBelow = editorHeight - cursorOffset.y
+            // 光标上方可用空间
+            val spaceAbove = cursorOffset.y
+
+            // 优先在下方显示，空间不足则在上方显示
+            val showBelow = spaceBelow >= estimatedListHeight + lineHeight || spaceBelow >= spaceAbove
+
+            val yOffset = if (showBelow) {
+                // 在光标下方显示，距离一个行高
+                cursorOffset.y + lineHeight
             } else {
-                // 光标在下方，向上显示
-                cursorOffset.y - listHeight - 20
+                // 在光标上方显示，距离一个行高
+                cursorOffset.y - estimatedListHeight - lineHeight
             }
+
+            val alignment = if (showBelow) Alignment.TopStart else Alignment.BottomStart
+
+            IntOffset(cursorOffset.x, yOffset) to alignment
         }
     }
 
     if (visible) {
         Popup(
-            alignment = Alignment.TopStart,
-            offset = IntOffset(cursorOffset.x, popupYOffset),
+            alignment = expandFrom,
+            offset = popupOffset,
             onDismissRequest = onDismiss,
             properties = PopupProperties(
                 focusable = false,
@@ -328,12 +307,12 @@ private fun TagSuggestionsPopup(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(150)) +
                         expandVertically(
-                            expandFrom = Alignment.Bottom,
+                            expandFrom = if (expandFrom == Alignment.TopStart) Alignment.Top else Alignment.Bottom,
                             animationSpec = tween(250)
                         ),
                 exit = fadeOut(animationSpec = tween(100)) +
                        shrinkVertically(
-                           shrinkTowards = Alignment.Bottom,
+                           shrinkTowards = if (expandFrom == Alignment.TopStart) Alignment.Top else Alignment.Bottom,
                            animationSpec = tween(150)
                        )
             ) {

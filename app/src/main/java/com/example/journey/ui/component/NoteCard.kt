@@ -11,6 +11,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.DataObject
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.ImportExport
+import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.TextSnippet
 import androidx.compose.material3.*
@@ -80,7 +84,8 @@ fun NoteCard(
                         Icon(
                             imageVector = Icons.Rounded.MoreHoriz,
                             contentDescription = "更多选项",
-                            tint = customColors.markdownHint
+                            tint = customColors.markdownHint,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
@@ -102,6 +107,14 @@ fun NoteCard(
                                     )
                                 )
                             },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = "修改",
+                                    tint = customColors.markdownHint,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onEditClick(note)
@@ -116,6 +129,14 @@ fun NoteCard(
                                         fontSize = 14.sp,
                                         color = customColors.markdownBody
                                     )
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.IosShare,
+                                    contentDescription = "导出",
+                                    tint = customColors.markdownHint,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             },
                             onClick = {
@@ -134,11 +155,28 @@ fun NoteCard(
                                     )
                                 )
                             },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Delete,
+                                    contentDescription = "删除",
+                                    tint = customColors.markdownHint,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onDeleteClick(note)
                             }
                         )
+                        // 分隔线
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp), // 分割线高度
+                            thickness = 0.5.dp, // 分割线宽度
+                            color = customColors.markdownHint.copy(alpha = 0.2f) // 分割线颜色
+                        )
+                        // 字数统计
+                        // 创建时间
+                        // 最后修改时间
                     }
                 }
             }
