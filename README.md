@@ -1,18 +1,23 @@
 # Journey - 笔记应用
 
-一个基于 Android Jetpack Compose 开发的现代化笔记应用，提供简洁、流畅的用户体验，支持完整的 Markdown 渲染。
+一个基于 Android Jetpack Compose 开发的现代化笔记应用，提供简洁、流畅的用户体验，支持所见即所得的 Markdown 编辑和完整的 Markdown 渲染。
 
 ## 功能特性
 
 - ✅ 创建、编辑和删除笔记
-- ✅ 笔记列表展示
+- ✅ 笔记列表展示，支持卡片式布局
+- ✅ **所见即所得 (WYSIWYG) Markdown 编辑器**
 - ✅ **完整的 Markdown 渲染支持**
-- ✅ 实时 Markdown 预览编辑
-- ✅ 标签管理
+- ✅ 标签管理（支持 `#标签名` 语法）
+- ✅ 标签自动补全功能
+- ✅ 笔记搜索功能
+- ✅ 笔记导出功能（支持 Markdown/JSON/TXT 格式）
 - ✅ 简洁直观的用户界面
 - ✅ 支持深色/浅色主题
-- ✅ 导航功能（笔记列表 ↔ 设置）
+- ✅ 导航功能（笔记列表 ↔ 编辑页面 ↔ 设置 ↔ 日志）
+- ✅ 抽屉式侧边栏导航
 - ✅ 响应式设计
+- ✅ 操作音效反馈
 
 ### Markdown 支持
 
@@ -21,18 +26,15 @@
 | 语法 | 示例 | 说明 |
 |------|------|------|
 | 标题 | `# H1` `## H2` | 支持 1-6 级标题 |
-| 加粗 | `**text**` | 粗体文本 |
-| 斜体 | `*text*` | 斜体文本 |
+| 加粗 | `**text**` `__text__` | 粗体文本 |
+| 斜体 | `*text*` `_text_` | 斜体文本 |
 | 删除线 | `~~text~~` | 删除线样式 |
 | 高亮 | `==text==` | 黄色高亮背景 |
-| 行内代码 | `` `code` `` | 等宽字体代码 |
-| 代码块 | ` ```code``` ` | 带背景的代码块 |
-| 引用块 | `> text` | 左侧带蓝色边框 |
-| 无序列表 | `- item` | 圆点列表 |
-| 有序列表 | `1. item` | 数字列表 |
+| 下划线 | `<u>text</u>` | 下划线样式 |
 | 链接 | `[text](url)` | 可点击链接 |
-| 分隔线 | `---` | 水平分割线 |
-| 表格 | `\| col \| col \|` | 数据表格 |
+| 无序列表 | `- item` `* item` | 圆点列表 |
+| 有序列表 | `1. item` | 数字列表 |
+| 标签 | `#标签名` | 支持中英文标签 |
 
 ## 技术栈
 
@@ -43,50 +45,84 @@
 | ViewModel | 2.7.x | 状态管理 |
 | Navigation Compose | 2.7.x | 页面导航 |
 | Material3 | 1.2.x | UI 组件库 |
+| Gson | 2.10.x | JSON 序列化 |
 
 ## 项目结构
 
 ```
 app/src/main/java/com/example/journey/
-├── MainActivity.kt          # 应用入口，设置导航和主题
+├── MainActivity.kt              # 应用入口，设置导航和主题
 ├── data/
-│   └── Note.kt             # 笔记数据模型
+│   ├── Note.kt                  # 笔记数据模型
+│   └── NoteRepository.kt        # 笔记数据仓库
 ├── ui/
-│   ├── component/          # 可复用 UI 组件
-│   │   ├── AddNoteDialog.kt  # 添加/编辑笔记对话框（含 Markdown 编辑工具栏）
-│   │   ├── NoteCard.kt       # 笔记卡片组件（含 Markdown 渲染）
-│   │   ├── MarkdownRenderer.kt   # Markdown 渲染器
-│   │   └── MarkdownText.kt       # Markdown 文本组件
-│   ├── screen/             # 页面组件
-│   │   ├── NotesScreen.kt    # 笔记列表页面
-│   │   └── SettingsScreen.kt # 设置页面
-│   └── theme/              # 主题配置
-│       ├── Color.kt         # 颜色定义（含 Markdown 主题色）
-│       ├── Theme.kt         # 主题样式
-│       └── Type.kt          # 字体样式
+│   ├── component/               # 可复用 UI 组件
+│   │   ├── AddNoteDialog.kt     # 添加笔记对话框
+│   │   ├── NoteCard.kt          # 笔记卡片组件
+│   │   ├── MarkdownParser.kt    # Markdown 解析器
+│   │   ├── MarkdownRenderer.kt  # Markdown 渲染器
+│   │   ├── RenderedMarkdownText.kt  # Markdown 文本渲染
+│   │   ├── MarkdownVisualTransformation.kt  # Markdown 视觉转换
+│   │   ├── MarkdownToolbar.kt   # Markdown 工具栏
+│   │   ├── WysiwygEditor.kt     # 所见即所得编辑器
+│   │   ├── WysiwygEditorState.kt  # 编辑器状态管理
+│   │   └── WysiwygPreview.kt    # 编辑器预览
+│   ├── screen/                  # 页面组件
+│   │   ├── NotesScreen.kt       # 笔记列表页面（含搜索、导出）
+│   │   ├── EditNoteScreen.kt    # 笔记编辑页面
+│   │   ├── SettingsScreen.kt    # 设置页面
+│   │   └── LogsScreen.kt        # 日志页面
+│   └── theme/                   # 主题配置
+│       ├── Color.kt             # 颜色定义
+│       ├── Theme.kt             # 主题样式
+│       └── Type.kt              # 字体样式
+├── utils/
+│   └── AppSoundPlayer.kt        # 应用音效播放器
 └── viewmodel/
-    └── NoteViewModel.kt     # 笔记状态管理
+    └── NoteViewModel.kt         # 笔记状态管理
 ```
 
-## Markdown 编辑器功能
+## 核心功能详解
 
-### 编辑界面
+### 1. 所见即所得编辑器 (WYSIWYG Editor)
 
-- **双模式切换**：编辑模式和预览模式一键切换
+- **实时渲染**：在编辑时即时显示 Markdown 格式效果
 - **快捷工具栏**：提供常用 Markdown 语法的快捷按钮
-  - 格式：加粗、斜体、删除线、高亮
-  - 代码：行内代码、代码块
-  - 列表：无序列表、有序列表
-  - 结构：标题、引用、链接
-- **标签补全**：输入 `#` 自动提示可用标签
-- **实时预览**：即时查看 Markdown 渲染效果
+  - 格式：加粗、斜体、删除线、高亮、下划线
+  - 结构：标题、无序列表、有序列表
+  - 链接：快速插入链接
+- **标签补全**：输入 `#` 自动提示可用标签，支持智能定位
+- **视觉转换**：使用 `MarkdownVisualTransformation` 实现编辑时的样式渲染
 
-### 渲染效果
+### 2. Markdown 解析与渲染
 
-- **自适应主题**：支持深色/浅色模式切换
-- **代码高亮**：代码块显示语言标签
-- **表格样式**：交替行背景色，清晰的边框
-- **引用样式**：左侧蓝色边框，斜体字
+- **解析器**：`MarkdownParserImpl` 支持块级元素和行内标记
+- **块级元素**：段落、标题（1-6级）、无序列表、有序列表、空行
+- **行内标记**：加粗、斜体、删除线、高亮、下划线、链接、标签
+- **渲染器**：`MarkdownRenderer` 将解析结果渲染为 Compose UI
+
+### 3. 笔记管理
+
+- **CRUD 操作**：创建、读取、更新、删除笔记
+- **标签系统**：支持多标签管理，可在编辑器中通过 `#标签名` 添加
+- **搜索功能**：支持按内容实时搜索笔记
+- **时间戳**：自动记录创建和修改时间
+
+### 4. 导出功能
+
+支持三种导出格式：
+- **Markdown (.md)**：保留 Markdown 格式和标签信息
+- **JSON (.json)**：包含完整数据的结构化导出
+- **纯文本 (.txt)**：简洁易读的文本格式
+
+### 5. 导航与界面
+
+- **抽屉式导航**：左侧滑出菜单，包含导出、设置、日志入口
+- **页面导航**：
+  - 笔记列表 → 编辑页面
+  - 笔记列表 → 设置页面
+  - 笔记列表 → 日志页面
+- **悬浮按钮**：居中显示的添加笔记按钮
 
 ## 开发流程
 
@@ -101,8 +137,8 @@ app/src/main/java/com/example/journey/
 - 设置项目目录结构
 
 ### 3. 数据层开发
-- 定义数据模型（如 Note.kt）
-- 实现数据存储和管理逻辑
+- 定义数据模型（Note.kt）
+- 实现数据存储和管理逻辑（NoteRepository.kt）
 
 ### 4. 视图模型开发
 - 创建 ViewModel 类
@@ -114,10 +150,10 @@ app/src/main/java/com/example/journey/
 - 实现页面布局和样式
 - 添加交互逻辑
 
-### 6. Markdown 渲染功能
+### 6. Markdown 编辑器功能
 - 实现 Markdown 解析器
-- 创建 Composable 渲染组件
-- 支持主题适配
+- 创建所见即所得编辑器
+- 实现视觉转换和实时预览
 
 ### 7. 导航配置
 - 设置导航路由
@@ -133,75 +169,41 @@ app/src/main/java/com/example/journey/
 - 生成签名 APK
 - 发布到应用商店
 
-## 开发流程图
-
-```mermaid
-flowchart TD
-    A[需求分析] --> B[项目初始化]
-    B --> C[数据层开发]
-    C --> D[视图模型开发]
-    D --> E[UI组件开发]
-    E --> F[Markdown渲染]
-    F --> G[导航配置]
-    G --> H[测试与调试]
-    H --> I[构建与发布]
-    
-    subgraph 开发阶段
-        C
-        D
-        E
-        F
-        G
-    end
-    
-    subgraph 验证阶段
-        H
-    end
-    
-    subgraph 发布阶段
-        I
-    end
-    
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#bfb,stroke:#333,stroke-width:2px
-    style D fill:#bfb,stroke:#333,stroke-width:2px
-    style E fill:#bfb,stroke:#333,stroke-width:2px
-    style F fill:#bfb,stroke:#333,stroke-width:2px
-    style G fill:#bfb,stroke:#333,stroke-width:2px
-    style H fill:#fbb,stroke:#333,stroke-width:2px
-    style I fill:#bbb,stroke:#333,stroke-width:2px
-```
-
 ## 应用流程图
 
 ```mermaid
 flowchart TD
     A[应用启动] --> B[MainActivity]
-    B --> C[加载MainScreen]
-    C --> D[初始化NoteViewModel]
-    D --> E[显示NotesScreen]
+    B --> C[初始化 NoteViewModel]
+    C --> D[显示 NotesScreen]
     
-    E -->|点击添加按钮| F[显示AddNoteDialog]
-    F -->|编辑Markdown| F1[实时预览]
-    F -->|保存笔记| G[NoteViewModel.addNote]
-    G --> E
+    D -->|点击添加按钮| E[显示 AddNoteDialog]
+    E -->|保存笔记| F[NoteViewModel.addNote]
+    F --> D
     
-    E -->|点击设置按钮| H[导航到SettingsScreen]
-    H -->|点击返回| E
+    D -->|点击笔记卡片| G[导航到 EditNoteScreen]
+    G -->|编辑内容| H[WysiwygEditor]
+    H -->|实时预览| I[MarkdownVisualTransformation]
+    G -->|保存| J[NoteViewModel.updateNote]
+    J --> D
     
-    E -->|点击笔记卡片| I[展开/收起笔记]
+    D -->|点击菜单| K[打开抽屉导航]
+    K -->|导出| L[ExportDialog]
+    L -->|选择格式| M[导出文件]
+    K -->|设置| N[导航到 SettingsScreen]
+    K -->|日志| O[导航到 LogsScreen]
+    
+    D -->|点击搜索| P[显示搜索栏]
+    P -->|输入关键词| Q[过滤笔记列表]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
     style C fill:#bbf,stroke:#333,stroke-width:2px
-    style D fill:#bbf,stroke:#333,stroke-width:2px
+    style D fill:#bfb,stroke:#333,stroke-width:2px
     style E fill:#bfb,stroke:#333,stroke-width:2px
-    style F fill:#bfb,stroke:#333,stroke-width:2px
-    style F1 fill:#bfb,stroke:#333,stroke-width:2px
     style G fill:#bfb,stroke:#333,stroke-width:2px
     style H fill:#bfb,stroke:#333,stroke-width:2px
-    style I fill:#bfb,stroke:#333,stroke-width:2px
+    style K fill:#fbb,stroke:#333,stroke-width:2px
 ```
 
 ## 如何运行
