@@ -158,6 +158,18 @@ private fun buildInlineAnnotatedString(
                 builder.append(token.text)
                 builder.addStyle(MarkdownStyles.link(customColors.markdownLink), start, builder.length)
             }
+            is MarkdownToken.Tag -> {
+                val start = builder.length
+                builder.append("#${token.content}")
+                builder.addStyle(
+                    androidx.compose.ui.text.SpanStyle(
+                        color = customColors.markdownLink,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    ),
+                    start,
+                    builder.length
+                )
+            }
         }
     }
 

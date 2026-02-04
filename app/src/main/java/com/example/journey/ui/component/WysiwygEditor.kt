@@ -21,7 +21,7 @@ import com.example.journey.ui.theme.LocalCustomColors
 
 /**
  * WYSIWYG 编辑器组件
- * 所见即所得模式：用户直接看到渲染后的样式
+ * 所见即所得模式：使用 VisualTransformation 实时渲染 Markdown 样式
  */
 @Composable
 fun WysiwygEditor(
@@ -33,6 +33,11 @@ fun WysiwygEditor(
 ) {
     val scrollState = rememberScrollState()
     val customColors = LocalCustomColors.current
+
+    // 创建 Markdown 视觉转换器
+    val markdownTransformation = remember(customColors) {
+        MarkdownVisualTransformation(customColors)
+    }
 
     // 自动滚动到底部
     LaunchedEffect(state.textFieldValue.text) {
@@ -52,16 +57,17 @@ fun WysiwygEditor(
             .verticalScroll(scrollState),
         textStyle = TextStyle(
             fontSize = 16.sp,
-            color = Color.Transparent,
+            color = customColors.markdownBody,
             lineHeight = 24.sp
         ),
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Sentences
         ),
         maxLines = Int.MAX_VALUE,
+        visualTransformation = markdownTransformation,
         decorationBox = { innerTextField ->
             Box(modifier = Modifier.fillMaxWidth()) {
-                // 渲染带样式的文本（所见即所得）
+                // 占位符
                 if (state.textFieldValue.text.isEmpty()) {
                     Text(
                         text = placeholder,
@@ -71,14 +77,8 @@ fun WysiwygEditor(
                             lineHeight = 24.sp
                         )
                     )
-                } else {
-                    RenderedMarkdownText(
-                        text = state.textFieldValue.text,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
-
-                // 透明的实际输入框
+                // 实际输入框（带有 Markdown 视觉转换）
                 innerTextField()
             }
         }

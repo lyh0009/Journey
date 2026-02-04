@@ -141,6 +141,18 @@ private fun parseInlineToAnnotatedString(
                             this.length
                         )
                     }
+                    is MarkdownToken.Tag -> {
+                        val start = this.length
+                        append("#${token.content}")
+                        addStyle(
+                            SpanStyle(
+                                color = customColors.markdownLink,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            start,
+                            this.length
+                        )
+                    }
                 }
             }
         }

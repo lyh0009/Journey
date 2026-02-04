@@ -47,6 +47,7 @@ sealed class MarkdownToken {
     data class Highlight(val content: String) : MarkdownToken()
     data class Underline(val content: String) : MarkdownToken()
     data class Link(val text: String, val url: String) : MarkdownToken()
+    data class Tag(val content: String) : MarkdownToken()
 }
 
 /**
@@ -114,7 +115,7 @@ class MarkdownParserImpl : MarkdownParser {
     override fun parseInline(text: String): List<MarkdownToken> {
         val tokens = mutableListOf<MarkdownToken>()
         var remaining = text
-        
+
         // 按优先级定义正则表达式
         val patterns = listOf(
             Regex("~~([^~]+)~~") to { match: MatchResult ->
@@ -140,6 +141,9 @@ class MarkdownParserImpl : MarkdownParser {
             },
             Regex("<u>([^<]+)</u>") to { match: MatchResult ->
                 MarkdownToken.Underline(match.groupValues[1])
+            },
+            Regex("#([\\w\\u4e00-\\u9fa5]+)") to { match: MatchResult ->
+                MarkdownToken.Tag(match.groupValues[1])
             }
         )
         
