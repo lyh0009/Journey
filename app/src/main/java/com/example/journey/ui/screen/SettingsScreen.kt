@@ -39,7 +39,7 @@ fun SettingsScreen(
     ) {
         // 设置内容
         Text(
-            text = "设置界面",
+            text = "这是设置界面，施工中🚧",
             modifier = Modifier
                 .fillMaxSize()
                 .padding(it)

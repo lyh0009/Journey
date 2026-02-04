@@ -12,6 +12,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
@@ -29,7 +30,8 @@ fun WysiwygEditor(
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
-    placeholder: String = "现在的想法是..."
+    placeholder: String = "现在的想法是...",
+    onTextLayout: (TextLayoutResult) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val customColors = LocalCustomColors.current
@@ -65,6 +67,7 @@ fun WysiwygEditor(
         ),
         maxLines = Int.MAX_VALUE,
         visualTransformation = markdownTransformation,
+        onTextLayout = onTextLayout,
         decorationBox = { innerTextField ->
             Box(modifier = Modifier.fillMaxWidth()) {
                 // 占位符

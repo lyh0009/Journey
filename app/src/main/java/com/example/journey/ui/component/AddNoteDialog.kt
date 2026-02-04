@@ -20,7 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import com.example.journey.R
 import com.example.journey.ui.theme.LocalCustomColors
@@ -92,6 +94,8 @@ fun AddNoteDialog(
     // 标签相关状态
     var showTagSuggestions by remember { mutableStateOf(false) }
     var currentTagPrefix by remember { mutableStateOf("") }
+    var cursorOffset by remember { mutableStateOf(androidx.compose.ui.unit.IntOffset(0, 0)) }
+    var textLayoutResult by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
 
     // 使用传入的可用标签
     val tags = remember(availableTags) {
@@ -109,7 +113,7 @@ fun AddNoteDialog(
         with(density) { (24.sp.toDp() * 5 + 32.dp) } // 5行 + 上下padding
     }
 
-    // 检测标签输入
+    // 检测标签输入并计算光标位置
     fun checkIsTypingTag() {
         val text = editorState.textFieldValue.text
         val cursorPosition = editorState.textFieldValue.selection.start
@@ -123,6 +127,14 @@ fun AddNoteDialog(
                 if (textAfterHash.none { it.isWhitespace() }) {
                     showTagSuggestions = true
                     currentTagPrefix = textAfterHash
+                    // 计算光标位置
+                    textLayoutResult?.let { layoutResult ->
+                        val cursorRect = layoutResult.getCursorRect(lastHashIndex)
+                        cursorOffset = androidx.compose.ui.unit.IntOffset(
+                            x = cursorRect.left.toInt(),
+                            y = cursorRect.top.toInt()
+                        )
+                    }
                 } else {
                     showTagSuggestions = false
                     currentTagPrefix = ""
@@ -164,7 +176,7 @@ fun AddNoteDialog(
         tonalElevation = 0.dp,
         scrimColor = Color.Black.copy(alpha = 0.5f)
     ) {
-        // 使用 Box 作为根容器，标签建议置于最上层
+        // 使用 Box 作为根容器
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -184,12 +196,26 @@ fun AddNoteDialog(
                         .height(fiveLineHeight)
                         .padding(horizontal = 16.dp)
                 ) {
+                    // 标签补全 Popup - 跟随光标位置
+                    TagSuggestionsPopup(
+                        visible = showTagSuggestions && filteredTags.isNotEmpty(),
+                        tags = filteredTags,
+                        cursorOffset = cursorOffset,
+                        onTagSelected = { tag ->
+                            insertTag(editorState, tag) { showTagSuggestions = false }
+                        },
+                        onDismiss = { showTagSuggestions = false }
+                    )
+
                     WysiwygEditor(
                         state = editorState,
                         onValueChange = { checkIsTypingTag() },
                         focusRequester = focusRequester,
                         placeholder = "现在的想法是...",
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        onTextLayout = { layoutResult ->
+                            textLayoutResult = layoutResult
+                        }
                     )
                 }
             }
@@ -245,19 +271,6 @@ fun AddNoteDialog(
                     )
                 }
             }
-
-            // 标签补全列表 - 置于最上层，在编辑器上方
-            TagSuggestions(
-                visible = showTagSuggestions && filteredTags.isNotEmpty(),
-                tags = filteredTags,
-                onTagSelected = { tag ->
-                    insertTag(editorState, tag) { showTagSuggestions = false }
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-                    .zIndex(1f) // 确保在最上层
-            )
         }
     }
 
@@ -270,81 +283,109 @@ fun AddNoteDialog(
 }
 
 /**
- * 标签建议弹出层
- * 悬浮在输入框上方，带有流畅动画效果
+ * 标签建议 Popup
+ * 跟随光标位置动态显示，不遮挡光标
  */
 @Composable
-private fun TagSuggestions(
+private fun TagSuggestionsPopup(
     visible: Boolean,
     tags: List<String>,
+    cursorOffset: IntOffset,
     onTagSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onDismiss: () -> Unit
 ) {
     val customColors = LocalCustomColors.current
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
 
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(animationSpec = tween(200)) + 
-                expandVertically(
-                    expandFrom = Alignment.Bottom,
-                    animationSpec = tween(300)
-                ),
-        exit = fadeOut(animationSpec = tween(150)) + 
-               shrinkVertically(
-                   shrinkTowards = Alignment.Bottom,
-                   animationSpec = tween(200)
-               ),
-        modifier = modifier
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .heightIn(max = 240.dp),
-            shape = RoundedCornerShape(16.dp),
-            shadowElevation = 8.dp,
-            color = Color.White
+    // 计算 Popup 位置：在光标上方显示
+    // 如果光标在顶部（y < 280），则在下方显示
+    val popupYOffset = remember(cursorOffset) {
+        with(density) {
+            val listHeight = 280.dp.toPx().toInt()
+            if (cursorOffset.y < listHeight + 50) {
+                // 光标在顶部，向下显示
+                cursorOffset.y + 50
+            } else {
+                // 光标在下方，向上显示
+                cursorOffset.y - listHeight - 20
+            }
+        }
+    }
+
+    if (visible) {
+        Popup(
+            alignment = Alignment.TopStart,
+            offset = IntOffset(cursorOffset.x, popupYOffset),
+            onDismissRequest = onDismiss,
+            properties = PopupProperties(
+                focusable = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
         ) {
-            LazyColumn {
-                items(tags) { tag ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                haptic.performHapticFeedback(
-                                    androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(animationSpec = tween(150)) +
+                        expandVertically(
+                            expandFrom = Alignment.Bottom,
+                            animationSpec = tween(250)
+                        ),
+                exit = fadeOut(animationSpec = tween(100)) +
+                       shrinkVertically(
+                           shrinkTowards = Alignment.Bottom,
+                           animationSpec = tween(150)
+                       )
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .widthIn(min = 200.dp, max = 300.dp)
+                        .heightIn(max = 280.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 8.dp,
+                    color = Color.White
+                ) {
+                    LazyColumn {
+                        items(tags) { tag ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        haptic.performHapticFeedback(
+                                            HapticFeedbackType.TextHandleMove
+                                        )
+                                        onTagSelected(tag)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "#",
+                                    style = TextStyle(
+                                        color = Color.Gray,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 )
-                                onTagSelected(tag)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = tag,
+                                    style = TextStyle(
+                                        fontSize = 16.sp,
+                                        color = customColors.markdownBody
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "#",
-                            style = TextStyle(
-                                color = Color.Gray,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = tag,
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                color = customColors.markdownBody
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    // 分割线
-                    if (tag != tags.last()) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = Color.LightGray.copy(alpha = 0.3f)
-                        )
+                            // 分割线
+                            if (tag != tags.last()) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = Color.LightGray.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
                     }
                 }
             }
