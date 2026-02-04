@@ -1,14 +1,12 @@
 package com.example.journey
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -178,11 +176,11 @@ fun MainScreen(
             onDismiss = {
                 showAddNoteDialog = false
             },
-            onSaveNote = {
-                content, tags ->
+            onSaveNote = { content, tags ->
                 viewModel.addNote(content, tags)
                 showAddNoteDialog = false
-            }
+            },
+            availableTags = viewModel.getAllTags()
         )
     }
 }

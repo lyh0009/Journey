@@ -65,4 +65,14 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
         }
         return notes.filter { it.content.contains(searchQuery, ignoreCase = true) }
     }
+
+    /**
+     * 获取所有已保存的唯一标签
+     */
+    fun getAllTags(): List<String> {
+        return _notes
+            .flatMap { it.tags }
+            .distinct()
+            .sorted()
+    }
 }

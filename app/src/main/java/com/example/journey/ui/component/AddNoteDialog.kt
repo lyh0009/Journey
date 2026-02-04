@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -41,7 +42,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddNoteDialog(
     onDismiss: () -> Unit,
-    onSaveNote: (String, List<String>) -> Unit
+    onSaveNote: (String, List<String>) -> Unit,
+    availableTags: List<String> = emptyList()
 ) {
     val editorState = rememberWysiwygEditorState()
     val focusRequester = remember { FocusRequester() }
@@ -87,10 +89,14 @@ fun AddNoteDialog(
     // 标签相关状态
     var showTagSuggestions by remember { mutableStateOf(false) }
     var currentTagPrefix by remember { mutableStateOf("") }
-    val tags = remember { mutableStateListOf<String>() }
+
+    // 使用传入的可用标签
+    val tags = remember(availableTags) {
+        mutableStateListOf<String>().apply { addAll(availableTags) }
+    }
 
     // 过滤标签
-    val filteredTags = remember(currentTagPrefix) {
+    val filteredTags = remember(currentTagPrefix, tags) {
         if (currentTagPrefix.isEmpty()) tags
         else tags.filter { it.startsWith(currentTagPrefix, ignoreCase = true) }
     }
@@ -155,7 +161,7 @@ fun AddNoteDialog(
         tonalElevation = 0.dp,
         scrimColor = Color.Black.copy(alpha = 0.5f)
     ) {
-        // 使用 Box 作为根容器，发送按钮绝对定位在底部
+        // 使用 Box 作为根容器，标签建议置于最上层
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -168,15 +174,6 @@ fun AddNoteDialog(
                     .wrapContentHeight()
                     .padding(bottom = 60.dp) // 为发送按钮留出空间
             ) {
-                // 标签补全列表
-                TagSuggestions(
-                    visible = showTagSuggestions && filteredTags.isNotEmpty(),
-                    tags = filteredTags,
-                    onTagSelected = { tag ->
-                        insertTag(editorState, tag) { showTagSuggestions = false }
-                    }
-                )
-
                 // 编辑器区域 - 固定为5行行高
                 Box(
                     modifier = Modifier
@@ -221,7 +218,7 @@ fun AddNoteDialog(
                             onSaveNote(contentWithoutTags, extractedTags)
                             // 延迟关闭弹窗，让音效有时间播放
                             scope.launch {
-                                delay(500)
+                                delay(700)
                                 onDismiss()
                             }
                         }
@@ -245,6 +242,19 @@ fun AddNoteDialog(
                     )
                 }
             }
+
+            // 标签补全列表 - 置于最上层，在编辑器上方
+            TagSuggestions(
+                visible = showTagSuggestions && filteredTags.isNotEmpty(),
+                tags = filteredTags,
+                onTagSelected = { tag ->
+                    insertTag(editorState, tag) { showTagSuggestions = false }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
+                    .zIndex(1f) // 确保在最上层
+            )
         }
     }
 
@@ -263,21 +273,23 @@ fun AddNoteDialog(
 private fun TagSuggestions(
     visible: Boolean,
     tags: List<String>,
-    onTagSelected: (String) -> Unit
+    onTagSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val customColors = LocalCustomColors.current
 
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically()
+        exit = fadeOut() + shrinkVertically(),
+        modifier = modifier
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             shape = RoundedCornerShape(12.dp),
-            shadowElevation = 2.dp,
+            shadowElevation = 4.dp, // 增加阴影使其更突出
             color = Color(0xFFF5F5F5)
         ) {
             LazyColumn(
